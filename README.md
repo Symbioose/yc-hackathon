@@ -12,7 +12,7 @@ Altai closes that gap. A sealed internal agent **dispatches a mission** through 
 
 | | Pillar | What it means |
 |---|---|---|
-| 🛡️ | **Governed, identity-isolated egress** | A network-level air-gap (two Docker nets), policy at ingress, identity stripping, an adversarial inbound **membrane**, and an **Ed25519-signed, Merkle-attested** brief. Tampering is mathematically detectable. |
+| 🛡️ | **Governed, identity-isolated egress** | A network-level air-gap (two Docker nets), policy at ingress, identity stripping, an adversarial inbound **membrane**, and an **Ed25519-signed, Merkle-attested** brief. Tampering is mathematically detectable — and any recipient can **verify a brief offline**, no trust required. |
 | 🧠 | **The Intelligence Network (Signal DNA)** | *Procedural* memory that learns **how** a signal is found and warm-starts every new mission — measurably faster, cheaper, more accurate. The membrane is the reward oracle; what persists is entity-stripped. A compounding data network effect. |
 | 📦 | **Agent-native deliverables** | The agent doesn't just return text — it **generates files**: Excel, CSV, Markdown, JSON, and **STIX 2.1** bundles, each stamped with the brief's cryptographic provenance. |
 
@@ -208,7 +208,7 @@ The ops-center has a **▶ RUN INTELLIGENCE DEMO** button that replays the *same
 | **#1 — cold** (network blind, explores all 5 sources) | 7 | 38 s | $0.41 | 0.72 |
 | **#14 — warmed** (recalled Tor→Breach from 13 similar) | **2** | **6 s** | **$0.04** | **0.94** |
 
-≈ **−71 % hops · −84 % latency · −90 % cost · +31 % confidence** — and the counter compounds (#14 → #15 → …) because each signed mission teaches the graph. The panel also renders the learned route lighting up and the top rewarded edges of the discovery graph.
+≈ **−71 % hops · −84 % latency · −90 % cost · +31 % confidence** — and the counter compounds (#14 → #15 → …) because each signed mission teaches the graph. The panel also renders the learned route lighting up, the top rewarded edges of the discovery graph, and a **Network ROI** meter — the cumulative `$` / latency / hops the network has saved across every signed mission vs. cold exploration. That's the business case in one line: the moat pays for itself and the payoff grows with usage.
 
 ```bash
 # headline before/after, straight from the engine (deterministic):
@@ -249,6 +249,30 @@ curl -s "localhost:3000/api/missions/$MID/export?format=xlsx" -o brief.xlsx
 curl -s "localhost:3000/api/missions/$MID/export?format=stix" | jq '.objects[].type'
 ```
 
+### Verifiable by anyone — "don't trust, verify"
+
+The provenance isn't a badge you have to take on faith. Export `brief.json`, hand it to anyone, and they can **independently confirm** it's authentic and untampered — the Ed25519 public key travels *in* the file, so verification needs no shared secret and no call back to Altai.
+
+```mermaid
+flowchart LR
+  E["brief.json<br/>(signal + signature + public_key)"] --> V{"verify Ed25519 over<br/>canonical(signal) + audit_root"}
+  V -->|matches| OK["✓ AUTHENTIC"]
+  V -->|one byte changed| NO["✗ FORGED"]
+  classDef n fill:#0a1120,stroke:#36e0ff,color:#c8d6f5;
+  classDef ok fill:#0a1120,stroke:#5dff9b,color:#5dff9b;
+  classDef no fill:#0a1120,stroke:#ff4d6d,color:#ff4d6d;
+  class E,V n
+  class OK ok
+  class NO no
+```
+
+The ops-center has a **VERIFY A BRIEF** drop-zone (drag the file in → ✓ / ✗); the same check is one stateless call — edit any value and it flips to forged:
+
+```bash
+curl -s -X POST localhost:3000/api/verify -H 'content-type: application/json' \
+  --data-binary @brief.json | jq '{signature_valid, public_key_fingerprint}'
+```
+
 ---
 
 ## Project structure
@@ -259,7 +283,7 @@ A pnpm + Turborepo monorepo. TypeScript end to end, with a single shared contrac
 altai/
 ├── apps/
 │   ├── external/            Gateway + agent fleet + membrane + ops-center UI (port 3000)
-│   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · memory · demo · export · prices · health
+│   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · memory · demo · export · verify · prices · health
 │   │   ├── app/page.tsx     Ops-center: live trace, intelligence-network panel, signal card, deliverables, audit ledger
 │   │   └── lib/             gateway orchestration, mission store, fleet (real/fake/demo), policy, membrane+seal, memory
 │   ├── internal/            Sealed enterprise app (served under /bank, port 3100)
@@ -369,7 +393,8 @@ The whole story, end to end, with zero keys required (the deterministic fleet ru
 3. **The moat — the Intelligence Network.** Hit **▶ RUN INTELLIGENCE DEMO**. The same mission replays **cold → warmed** and the panel animates live:
    `#1: 7 hops · 38s · $0.41 · 0.72` **→** `#14: 2 hops · 6s · $0.04 · 0.94`. The learned route lights up first; run it again and the counter compounds (`#15`, `#16`…) — it's *learning*.
 4. **Agent deliverables.** From the SIGNAL card, download the brief as **Excel**, **CSV**, **Markdown**, **JSON**, or a **STIX 2.1** bundle — each carrying the Ed25519 provenance.
-5. **Any agent can do this.** The `/bank` MCP panel drives the same pipeline through the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission) — dispatch → status → fetch_signal — and gets back the identical signed brief.
+5. **Don't trust — verify.** Drop that `brief.json` onto the **VERIFY A BRIEF** zone → ✓ AUTHENTIC. Open it, change one number, drop it again → ✗ FORGED. The proof is in the file; Altai can't fake it and neither can anyone else.
+6. **Any agent can do this.** The `/bank` MCP panel drives the same pipeline through the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission) — dispatch → status → fetch_signal — and gets back the identical signed brief.
 
 > One-liner to prove the learning headline without the UI:
 > ```bash
@@ -390,7 +415,8 @@ The gateway (`apps/external`) exposes the egress and observability surface.
 | `GET` | `/api/missions/:id/audit` | Audit ledger + `signature_valid` + `ledger_ok`. |
 | `POST` | `/api/missions/:id/tamper` | Demo control: mutate one ledger entry to show tamper-evidence. |
 | `GET` | `/api/missions/:id/export?format=` | Download the brief as a file: `xlsx · csv · md · json · stix`. |
-| `GET` | `/api/memory` | Intelligence Network snapshot: the before/after `MemoryReport` + learned graph. |
+| `POST` | `/api/verify` | Stateless verification — body: a `SignedBrief`. Returns `signature_valid` + signer fingerprint. |
+| `GET` | `/api/memory` | Intelligence Network snapshot: the before/after `MemoryReport` + learned graph + ROI. |
 | `POST` | `/api/demo` | Run the deterministic Intelligence Network demo (same mission, cold → warmed). |
 | `GET` | `/api/prices/:ticker` | Daily close series for the overlay chart (market data, outside the signed payload). |
 | `GET` | `/api/health` | Liveness probe. |
@@ -445,7 +471,10 @@ RouteEdge         // one learned edge of the discovery graph
 { from, to, visits, success_rate, avg_confidence, avg_cost_usd, avg_latency_ms, reward }
 
 MemoryReport      // the before/after the ops-center renders
-{ mission_type, sector, recalled_from, run_index, route[], cold, warmed, edges[] }
+{ mission_type, sector, recalled_from, run_index, route[], cold, warmed, edges[], roi? }
+
+NetworkRoi        // cumulative value the network has delivered vs. cold exploration
+{ missions, saved_usd, saved_latency_ms, saved_hops }
 ```
 
 Deliverables are generated by `@altai/artifacts` from a `SignedBrief` into an `Artifact`
@@ -462,6 +491,7 @@ for `xlsx`. Every artifact embeds the brief's Ed25519 signature + Merkle root.
 - **Defensive / read-only.** Scope is fixed to OSINT read-only. The fleet observes and reports; it never transacts.
 - **Inbound membrane.** Returned content is sanitized (PII/secrets/malware) and scanned for prompt-injection before it can reach the sealed agent.
 - **Tamper-evident provenance.** Every action is hash-chained into a Merkle ledger; the brief is Ed25519-signed over the signal plus the Merkle root. Altering any entry breaks the recomputed root, and the sealed side detects it on verification.
+- **Independently verifiable.** The signing public key travels inside the `SignedBrief`, so any recipient can confirm authenticity offline — no shared secret, no trusted call-back to Altai. `POST /api/verify` (and the ops-center drop-zone) re-checks the signature; one altered byte flips it to forged.
 
 ---
 
@@ -472,7 +502,7 @@ pnpm test        # all packages
 pnpm typecheck   # all packages
 ```
 
-Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection), the tools (web/breach), the agents (planner synthesis, membrane injection detection), the fixtures (confidence fusion and AlphaCard computation), the Intelligence Network (fingerprint privacy/entity-stripping, cosine retrieval, the membrane-as-oracle reward model, and the locked cold→warmed before/after), and the artifacts (CSV escaping, deterministic STIX 2.1 bundle, and a real round-tripped `.xlsx`).
+Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection, independent forged-brief rejection, key fingerprint), the tools (web/breach), the agents (planner synthesis, membrane injection detection), the fixtures (confidence fusion and AlphaCard computation), the Intelligence Network (fingerprint privacy/entity-stripping, cosine retrieval, the membrane-as-oracle reward model, the locked cold→warmed before/after, and ROI), and the artifacts (CSV escaping, deterministic STIX 2.1 bundle, and a real round-tripped `.xlsx`).
 
 ---
 

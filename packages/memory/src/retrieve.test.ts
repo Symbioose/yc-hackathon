@@ -38,6 +38,16 @@ describe("retrieve — cosine over the deterministic feature vector", () => {
     expect(recall.reason).toMatch(/Tor→Breach/);
   });
 
+  it("reports cumulative ROI from the trained corpus", () => {
+    const roi = store.roi();
+    expect(roi.missions).toBeGreaterThan(10); // the seed has many signed missions
+    expect(roi.saved_usd).toBeGreaterThan(0);
+    expect(roi.saved_latency_ms).toBeGreaterThan(0);
+    expect(roi.saved_hops).toBeGreaterThan(0);
+    // and it shows up on the report the ops-center renders
+    expect(store.compareColdWarm({ query: "breach?", ticker: "LYV" }).roi?.missions).toBe(roi.missions);
+  });
+
   it("cold-starts gracefully when nothing is comparable", () => {
     const empty = new MemoryStore([]);
     const recall = empty.recall({ query: "anything", ticker: "ZZZ" });

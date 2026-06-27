@@ -124,6 +124,15 @@ export const RouteEdgeSchema = z.object({
 });
 export type RouteEdge = z.infer<typeof RouteEdgeSchema>;
 
+/** Cumulative value the network has delivered vs. cold exploration — the ROI meter. */
+export const NetworkRoiSchema = z.object({
+  missions: z.number(),
+  saved_usd: z.number(),
+  saved_latency_ms: z.number(),
+  saved_hops: z.number(),
+});
+export type NetworkRoi = z.infer<typeof NetworkRoiSchema>;
+
 /** The snapshot the ops-center INTELLIGENCE NETWORK panel renders: the before/after
  * transformation on the same mission plus the current learned graph. */
 export const MemoryReportSchema = z.object({
@@ -136,5 +145,6 @@ export const MemoryReportSchema = z.object({
   cold: MissionMetricsSchema,
   warmed: MissionMetricsSchema,
   edges: z.array(RouteEdgeSchema),
+  roi: NetworkRoiSchema.optional(),
 });
 export type MemoryReport = z.infer<typeof MemoryReportSchema>;

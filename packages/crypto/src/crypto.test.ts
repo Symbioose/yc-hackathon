@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { Signal } from "@altai/contracts";
 import { buildLedger, merkleRoot, tamperEntry } from "./merkle";
 import { signBrief, verifyBrief, verifyLedger } from "./brief";
+import { publicKeyFingerprint } from "./sign";
 
 const raw = [
   { ts: "t1", actor: "Gateway", action: "mission received" },
@@ -38,5 +39,21 @@ describe("crypto attestation", () => {
     const tampered = tamperEntry(entries, 1, { action: "DELETED EVIDENCE" });
     expect(verifyLedger(tampered, brief.audit_root)).toBe(false); // recomputed root ≠ signed root → RED
     expect(verifyBrief(brief)).toBe(true); // the brief signature itself is still valid
+  });
+
+  it("independent verification: a forged brief is rejected, an authentic one accepted", () => {
+    const brief = signBrief(signal, merkleRoot(buildLedger(raw)));
+    expect(verifyBrief(brief)).toBe(true);
+    // edit a single field of the SIGNED payload → signature no longer matches
+    const forged = { ...brief, signal: { ...brief.signal, confidence: 0.99 } };
+    expect(verifyBrief(forged)).toBe(false);
+    // a tampered audit_root is also caught
+    expect(verifyBrief({ ...brief, audit_root: brief.audit_root.replace(/.$/, "0") })).toBe(false);
+  });
+
+  it("public key fingerprint is stable and key-specific", () => {
+    const a = signBrief(signal, "root");
+    expect(publicKeyFingerprint(a.public_key)).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(publicKeyFingerprint(a.public_key)).toBe(publicKeyFingerprint(a.public_key));
   });
 });

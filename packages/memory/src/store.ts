@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import type { MemoryRecall, MemoryReport, MissionMetrics, Signal, SourceType, TraceEvent } from "@altai/contracts";
+import type { MemoryRecall, MemoryReport, MissionMetrics, NetworkRoi, Signal, SourceType, TraceEvent } from "@altai/contracts";
 import { GenomeSchema, type Genome } from "./types";
 import { featureVector, cosine } from "./features";
 import { RouteGraph } from "./route";
@@ -91,6 +91,22 @@ export class MemoryStore {
     return n;
   }
 
+  /** Cumulative value the network has delivered: for every signed mission in the
+   * corpus, how much cheaper/faster/shorter it was than an uninformed cold run. A
+   * pure function of the corpus, so it grows naturally as missions are learned. */
+  roi(): NetworkRoi {
+    const cold = evaluateRoute(COLD_ROUTE, "cold");
+    let missions = 0, usd = 0, ms = 0, hops = 0;
+    for (const { genome: g } of this.entries) {
+      if (g.outcome !== "signed") continue;
+      missions++;
+      usd += Math.max(0, cold.cost_usd - g.cost_usd);
+      ms += Math.max(0, cold.latency_ms - g.latency_ms);
+      hops += Math.max(0, cold.hops - g.hops);
+    }
+    return { missions, saved_usd: Number(usd.toFixed(2)), saved_latency_ms: Math.round(ms), saved_hops: hops };
+  }
+
   /** The learned route for this kind of mission (graph greedy), or the breach-intel
    * default if the network is still cold. */
   bestRoute(missionType: string): SourceType[] {
@@ -137,6 +153,7 @@ export class MemoryStore {
       cold: evaluateRoute(COLD_ROUTE, "cold"),
       warmed: evaluateRoute(route, "warm"),
       edges: this.graph.edgesReport(q.mission_type),
+      roi: this.roi(),
     };
   }
 
@@ -161,6 +178,7 @@ export class MemoryStore {
       cold: evaluateRoute(COLD_ROUTE, "cold"),
       warmed: { hops: g.hops, latency_ms: g.latency_ms, cost_usd: g.cost_usd, confidence: g.confidence },
       edges: this.graph.edgesReport(g.mission_type),
+      roi: this.roi(),
     };
   }
 

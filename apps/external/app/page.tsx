@@ -199,6 +199,77 @@ function Deliverables({ missionId }: { missionId: string }) {
   );
 }
 
+// "Don't trust — verify." Drop an exported brief.json and the gateway re-checks its
+// Ed25519 signature against the public key embedded in the file. No mission lookup,
+// no shared secret — the proof travels with the artifact.
+interface VerifyResult { ok?: boolean; error?: string; signature_valid?: boolean; public_key_fingerprint?: string; entity?: string; event_type?: string; }
+
+function VerifyBrief() {
+  const [res, setRes] = useState<VerifyResult | null>(null);
+  const [drag, setDrag] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function verify(text: string) {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/verify", { method: "POST", headers: { "content-type": "application/json" }, body: text });
+      setRes(await r.json());
+    } catch {
+      setRes({ ok: false, error: "Could not read that file" });
+    } finally {
+      setBusy(false);
+    }
+  }
+  const onFile = (f?: File | null) => { if (f) void f.text().then(verify); };
+
+  const authentic = res?.ok !== false && res?.signature_valid === true;
+  const forged = res?.ok !== false && res?.signature_valid === false;
+
+  return (
+    <div style={card}>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); onFile(e.dataTransfer.files?.[0]); }}
+        onClick={() => fileRef.current?.click()}
+        onPaste={(e) => verify(e.clipboardData.getData("text"))}
+        tabIndex={0}
+        style={{
+          border: `1px dashed ${drag ? "#36e0ff" : "#2f4670"}`, padding: 16, textAlign: "center", cursor: "pointer",
+          fontSize: 11, color: drag ? "#36e0ff" : "#8a97b5", background: drag ? "rgba(54,224,255,0.06)" : "transparent",
+        }}
+      >
+        {busy ? "verifying…" : "⬇ drop a brief.json · click to choose · or paste"}
+      </div>
+      <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={(e) => onFile(e.target.files?.[0])} />
+      {res && (
+        <div style={{ marginTop: 10 }}>
+          {res.ok === false ? (
+            <div className="pixel" style={{ fontSize: 9, color: "#ff4d6d" }}>✗ {res.error ?? "INVALID FILE"}</div>
+          ) : (
+            <>
+              <div className="pixel" style={{ fontSize: 10, color: authentic ? "#5dff9b" : "#ff4d6d" }}>
+                {authentic ? "✓ AUTHENTIC · Ed25519 VERIFIED" : "✗ FORGED · SIGNATURE MISMATCH"}
+              </div>
+              {res.entity && <div style={{ fontSize: 11, color: "#9aa", marginTop: 6 }}>{res.entity} · {res.event_type}</div>}
+              {res.public_key_fingerprint && (
+                <div style={{ fontSize: 9, color: "#5b6b8c", marginTop: 4, wordBreak: "break-all" }}>
+                  signer {res.public_key_fingerprint.slice(0, 27)}…
+                </div>
+              )}
+              {forged && <div style={{ fontSize: 9, color: "#ff4d6d", marginTop: 4 }}>this file was altered after signing.</div>}
+            </>
+          )}
+        </div>
+      )}
+      <div style={{ fontSize: 9, color: "#5b6b8c", marginTop: 8 }}>
+        Tip: download a brief above, change one value, re-drop it — verification fails.
+      </div>
+    </div>
+  );
+}
+
 function IntelNetwork({ report, onDemo, running }: { report: MemoryReport | null; onDemo: () => void; running: boolean }) {
   const cold = !!report && report.recalled_from === 0; // demo cold phase / true cold start
   return (
@@ -229,6 +300,16 @@ function IntelNetwork({ report, onDemo, running }: { report: MemoryReport | null
 
           <div className="pixel" style={{ marginTop: 12, fontSize: 8, color: "#5b6b8c" }}>REWARDED EDGES · MEMBRANE = ORACLE</div>
           <EdgeBars edges={report.edges} />
+
+          {report.roi && report.roi.missions > 0 && (
+            <div style={{ marginTop: 12, padding: "8px 10px", border: "1px solid #1f7a4d", background: "rgba(93,255,155,0.05)", fontSize: 10, color: "#9aa" }}>
+              <span className="pixel" style={{ fontSize: 8, color: "#5dff9b" }}>NETWORK ROI</span> — saved{" "}
+              <b style={{ color: "#5dff9b" }}>${report.roi.saved_usd.toFixed(2)}</b> ·{" "}
+              <b style={{ color: "#5dff9b" }}>{Math.round(report.roi.saved_latency_ms / 1000)}s</b> ·{" "}
+              <b style={{ color: "#5dff9b" }}>{report.roi.saved_hops}</b> hops across{" "}
+              <b style={{ color: "#c8d6f5" }}>{report.roi.missions}</b> signed missions
+            </div>
+          )}
         </>
       ) : (
         <div style={{ color: "#5b6b8c", fontSize: 12 }} className="blink">network warming up…</div>
@@ -468,6 +549,9 @@ export default function OpsCenter() {
         ) : (
           <div style={{ ...card, color: "#5b6b8c", fontSize: 12 }}>no audit yet.</div>
         )}
+
+        <h2 className="pixel" style={{ ...sectionTitle, marginTop: 22 }}>VERIFY A BRIEF</h2>
+        <VerifyBrief />
       </aside>
     </main>
   );

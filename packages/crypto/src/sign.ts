@@ -1,4 +1,4 @@
-import { generateKeyPairSync, sign as nodeSign, verify as nodeVerify, createPublicKey } from "node:crypto";
+import { createHash, generateKeyPairSync, sign as nodeSign, verify as nodeVerify, createPublicKey } from "node:crypto";
 
 export interface KeyPair {
   privateKeyPem: string;
@@ -29,4 +29,11 @@ export function verifySig(msg: string, signatureB64: string, publicKeyPem: strin
   } catch {
     return false;
   }
+}
+
+/** Stable fingerprint of a public key (SHA-256 over its DER bytes) — lets a recipient
+ * pin/recognise the signer without trusting any transport. */
+export function publicKeyFingerprint(publicKeyPem: string): string {
+  const der = Buffer.from(publicKeyPem.replace(/-----[^-]+-----/g, "").replace(/\s+/g, ""), "base64");
+  return "sha256:" + createHash("sha256").update(der).digest("hex");
 }
