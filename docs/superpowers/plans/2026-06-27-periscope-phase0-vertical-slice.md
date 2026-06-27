@@ -1199,7 +1199,7 @@ git commit -m "feat(docker): 2-network compose — real cage (internal:true) + g
 
 ## Self-review (completed by plan author)
 
-**Spec coverage (Phase 0 scope only):** monorepo ✓ (T1) · contract Zod schemas ✓ (T2) · hero_case Ticketmaster+Medibank + price puller + noisy-OR fusion ✓ (T3) · external gateway routes (dispatch/SSE/signal) ✓ (T5) · fake fleet streaming trace + hero signal ✓ (T4) · ops-center trace+signal UI ✓ (T6) · sealed internal chat with dispatch-only egress ✓ (T7) · 2-network Docker cage + cage proof ✓ (T8). Phase-1+ items (real Claude swarm, live Tor, membrane agents, Ed25519+Merkle, tamper-demo, AlphaCard chart) are intentionally **out of Phase 0** and will be planned next.
+**Spec coverage (Phase 0 scope only):** monorepo ✓ (T1) · contract Zod schemas ✓ (T2) · hero_case Ticketmaster+Medibank + price puller + noisy-OR fusion ✓ (T3) · external gateway routes (dispatch/SSE/signal) ✓ (T5) · fake fleet streaming trace + hero signal ✓ (T4) · ops-center trace+signal UI ✓ (T6) · sealed internal chat with dispatch-only egress ✓ (T7) · 2-network Docker cage + cage proof ✓ (T8). Phase-1+ items (real OpenAI swarm, live Tor, membrane agents, Ed25519+Merkle, tamper-demo, AlphaCard chart) are intentionally **out of Phase 0** and will be planned next.
 
 **Placeholder scan:** No TBD/TODO. The only `example.invalid` URL is a deliberate fixture placeholder for the BreachForums listing (real capture added by Malena pre-demo); the SEC evidence_url is real. Network-dependent steps (T3 S5, T5 S4) have explicit fallbacks.
 
@@ -1208,6 +1208,6 @@ git commit -m "feat(docker): 2-network compose — real cage (internal:true) + g
 ---
 
 ## Notes for Phase 1+ (not in this plan)
-- **Phase 1:** real AI SDK swarm (Planner + Scouts), gateway on-prem LLM proxy for the sealed agent's Claude brain, live Tor `tor` service + `tor_fetch`, breach/OSINT tools.
+- **Phase 1:** real AI SDK swarm (Planner + Scouts) on **OpenAI** (`@ai-sdk/openai`), gateway on-prem LLM proxy for the sealed agent's OpenAI brain, live Tor `tor` service + `tor_fetch`, breach/OSINT tools.
 - **Phase 2:** core membrane (Sanitizer + Injection Hunter + Judge), `packages/crypto` (Ed25519 + Merkle), live injection catch, tamper-demo.
 - **Phase 3:** AlphaCard + confidence-fusion UI, stock overlay chart, optional Compliance Auditor, rehearsal + backup video.
