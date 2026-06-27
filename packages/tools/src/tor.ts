@@ -1,4 +1,10 @@
 import { socksDispatcher } from "fetch-socks";
+// IMPORTANT: route Tor traffic through undici's fetch (not Node's global fetch). The
+// SOCKS dispatcher is built by fetch-socks against undici; it MUST be handed to a fetch
+// from the SAME undici major, or undici rejects it ("invalid onRequestStart method").
+// We therefore pin tools → undici and call its fetch here. Clearnet helpers (web.ts,
+// ahmia.ts) keep using the global fetch — they don't need the dispatcher.
+import { fetch as torFetchImpl } from "undici";
 
 const HOST = process.env.TOR_SOCKS_HOST ?? "127.0.0.1";
 const PORT = Number(process.env.TOR_SOCKS_PORT ?? 9050);
@@ -20,8 +26,7 @@ export async function torFetch(url: string, timeoutMs = 30000): Promise<TorResul
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, {
-      // @ts-expect-error undici dispatcher is accepted at runtime by Node fetch
+    const res = await torFetchImpl(url, {
       dispatcher: dispatcher(),
       signal: ctrl.signal,
       headers: { "user-agent": "AltaiBot/0.1" },

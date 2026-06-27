@@ -54,10 +54,16 @@ export async function runSwarm(mission: Mission, trace: Trace, recall?: MemoryRe
   }
 
   trace("execution", "Planner", "action", `Decomposing mission → ${scouts.map((s) => SCOUT_LABEL[s]).join("/")} scouts`);
-  const results = await Promise.all(scouts.map((k) =>
-    k === "web" ? webScout(mission, trace) : k === "tor" ? torScout(mission, trace) : breachScout(mission, trace),
-  ));
-  const sources = results.flatMap((r) => r.sources);
+  // Resilient fan-out: one scout failing (e.g. no LLM key, Tor down, an API 429) must
+  // NOT sink the mission — the others still contribute. allSettled keeps the swarm up.
+  const settled = await Promise.allSettled(
+    scouts.map((k) => (k === "web" ? webScout(mission, trace) : k === "tor" ? torScout(mission, trace) : breachScout(mission, trace))),
+  );
+  const sources = settled.flatMap((r, i) => {
+    if (r.status === "fulfilled") return r.value.sources;
+    trace("execution", SCOUT_LABEL[scouts[i]] + "Scout", "warn", `Scout failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`);
+    return [];
+  });
   trace("execution", "Planner", "success", `Synthesizing signal from ${sources.length} source(s) across ${scouts.length} scout(s)`);
   return synthesizeSignal(mission, sources);
 }
