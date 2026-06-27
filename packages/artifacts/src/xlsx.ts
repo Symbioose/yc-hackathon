@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import type { SignedBrief } from "@altai/contracts";
+import { neutralizeFormula } from "./util";
 
 const CYAN = "FF0A1120";
 const HEADER = "FF1B2740";
@@ -9,6 +10,14 @@ function styleHeader(row: ExcelJS.Row): void {
   row.eachCell((c) => {
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: HEADER } };
   });
+}
+
+/** Write user-derived strings as formula-safe text; pass numbers/blanks through.
+ * ExcelJS already types string cells as text (so Excel won't auto-evaluate them), but
+ * we still neutralize a leading =/+/-/@ as belt-and-suspenders for CSV round-trips. */
+function cell(v: string | number | undefined): string | number {
+  if (v == null) return "—";
+  return typeof v === "string" ? neutralizeFormula(v) : v;
 }
 
 /**
@@ -42,7 +51,7 @@ export async function briefToXLSX(brief: SignedBrief): Promise<Uint8Array> {
     ["Summary", signal.summary],
   ];
   for (const [k, v] of rows) {
-    const r = summary.addRow({ k, v: v ?? "—" });
+    const r = summary.addRow({ k, v: cell(v) });
     if (k === "Confidence" && typeof v === "number") r.getCell("v").numFmt = "0%";
   }
   summary.getColumn("k").font = { bold: true };
@@ -58,7 +67,7 @@ export async function briefToXLSX(brief: SignedBrief): Promise<Uint8Array> {
   ];
   styleHeader(sources.getRow(1));
   for (const s of signal.sources) {
-    const r = sources.addRow({ name: s.name, type: s.type, rel: s.reliability, obs: s.observed_at, url: s.url ?? "—" });
+    const r = sources.addRow({ name: cell(s.name), type: cell(s.type), rel: s.reliability, obs: cell(s.observed_at), url: cell(s.url) });
     r.getCell("rel").numFmt = "0.00";
   }
 
@@ -81,7 +90,7 @@ export async function briefToXLSX(brief: SignedBrief): Promise<Uint8Array> {
       ["Max drawdown %", a.max_drawdown_pct],
       ["Note", a.note],
     ];
-    for (const [k, v] of arows) alpha.addRow({ k, v: v ?? "—" });
+    for (const [k, v] of arows) alpha.addRow({ k, v: cell(v) });
     alpha.getColumn("k").font = { bold: true };
   }
 
@@ -99,7 +108,7 @@ export async function briefToXLSX(brief: SignedBrief): Promise<Uint8Array> {
     ["Public key", brief.public_key.replace(/\s+/g, " ").trim()],
     ["Integrity", "Tamper-evident: altering any audit entry breaks the recomputed Merkle root while the signature stays valid."],
   ];
-  for (const [k, v] of prows) prov.addRow({ k, v });
+  for (const [k, v] of prows) prov.addRow({ k, v: cell(v) });
   prov.getColumn("k").font = { bold: true };
 
   const buf = await wb.xlsx.writeBuffer();

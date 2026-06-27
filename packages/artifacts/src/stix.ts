@@ -53,7 +53,9 @@ export function briefToSTIX(brief: SignedBrief, opts: StixOptions = {}): string 
       name: `${s.name} (${s.type})`,
       description: `Corroborating ${s.type} source for ${signal.entity} — ${signal.event_type}.`,
       indicator_types: ["compromised"],
-      pattern: `[url:value = '${s.url.replace(/'/g, "\\'")}']`,
+      // escape backslash first, then the quote, so the value can't break out of the
+      // STIX pattern grammar (string-literal injection).
+      pattern: `[url:value = '${s.url.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}']`,
       pattern_type: "stix",
       valid_from: toTimestamp(s.observed_at),
       confidence: Math.round(s.reliability * 100),

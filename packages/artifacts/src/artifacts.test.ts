@@ -107,6 +107,19 @@ describe("buildArtifact", () => {
     expect(json.filename.endsWith(".json")).toBe(true);
   });
 
+  it("produces a real .xlsx that exceljs can read back (and neutralizes formula cells)", async () => {
+    // fall through to the existing assertions below after a formula-injection check
+    const evil: SignedBrief = {
+      ...brief,
+      signal: { ...brief.signal, sources: [{ name: "=cmd|' /C calc'!A0", type: "tor_forum", reliability: 0.7, observed_at: "t", url: "https://ok" }] },
+    };
+    const art = await buildArtifact(evil, "xlsx");
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(Buffer.from(art.body as Uint8Array) as never);
+    const nameCell = wb.getWorksheet("Sources")!.getRow(2).getCell(1).value;
+    expect(String(nameCell).startsWith("'=")).toBe(true); // formula defused, stored as text
+  });
+
   it("produces a real .xlsx that exceljs can read back", async () => {
     const art = await buildArtifact(brief, "xlsx");
     expect(art.mime).toContain("spreadsheetml");
@@ -123,5 +136,38 @@ describe("buildArtifact", () => {
     expect(wb.getWorksheet("Sources")).toBeTruthy();
     expect(wb.getWorksheet("Provenance")).toBeTruthy();
     expect(wb.getWorksheet("Alpha")).toBeTruthy();
+  });
+});
+
+describe("document security (defense in depth)", () => {
+  const evil: SignedBrief = {
+    ...brief,
+    signal: {
+      ...brief.signal,
+      entity: "=danger() pivot",
+      sources: [
+        { name: "=cmd|' /C calc'!A0", type: "tor_forum", reliability: 0.7, observed_at: "t", url: "http://evil/'; DROP--" },
+        { name: "table|break <img onerror=x>", type: "press", reliability: 0.4, observed_at: "t" },
+      ],
+    },
+  };
+
+  it("CSV: neutralizes spreadsheet formula injection", () => {
+    const csv = briefToCSV(evil);
+    expect(csv).toContain("'=cmd"); // leading '=' defused with a quote
+    expect(csv).not.toMatch(/(^|,)=cmd/m); // never a raw formula at a cell boundary
+  });
+
+  it("Markdown: escapes table + HTML breakouts", () => {
+    const md = briefToMarkdown(evil);
+    expect(md).toContain("table\\|break"); // pipe escaped → table integrity
+    expect(md).toContain("&lt;img onerror=x&gt;"); // angle brackets neutralized
+    expect(md).not.toContain("<img"); // no raw HTML
+  });
+
+  it("STIX: escapes the URL inside the pattern string (no grammar breakout)", () => {
+    const bundle = JSON.parse(briefToSTIX(evil, { generatedAt: "2024-06-01T00:00:00.000Z" }));
+    const indicator = bundle.objects.find((o: { type: string }) => o.type === "indicator");
+    expect(indicator.pattern).toBe("[url:value = 'http://evil/\\'; DROP--']");
   });
 });

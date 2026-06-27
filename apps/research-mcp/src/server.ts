@@ -104,6 +104,46 @@ function buildServer(): McpServer {
     },
   );
 
+  server.registerTool(
+    "export_brief_document",
+    {
+      title: "Export the brief as a document",
+      description:
+        "Generate a downloadable, provenance-stamped document from a completed mission's signed brief — " +
+        "Excel (xlsx), CSV (csv), Markdown (md), the raw signed brief (json), or a STIX 2.1 bundle (stix). " +
+        "Forwards to the external gateway, which sanitizes + signs the brief before rendering, so the file is " +
+        "safe to open (no formula/HTML injection) and independently verifiable. Text formats return as text; " +
+        "xlsx returns as an embedded base64 resource.",
+      inputSchema: {
+        mission_id: z.string().describe("Mission id returned by dispatch_research_mission."),
+        format: z.enum(["xlsx", "csv", "md", "json", "stix"]).describe("Document format to generate."),
+      },
+    },
+    async ({ mission_id, format }) => {
+      const res = await fetch(`${EXTERNAL_URL}/api/missions/${mission_id}/export?format=${format}`);
+      if (res.status === 202) return ok({ mission_id, status: "running", note: "brief not sealed yet" });
+      if (!res.ok) return err({ mission_id, status: "error", http_status: res.status });
+
+      const mime = res.headers.get("content-type") ?? "application/octet-stream";
+      const disposition = res.headers.get("content-disposition") ?? "";
+      const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `altai-brief.${format}`;
+
+      // Binary (xlsx) → embedded base64 resource; text formats → text content.
+      if (format === "xlsx") {
+        const blob = Buffer.from(await res.arrayBuffer()).toString("base64");
+        return {
+          content: [
+            {
+              type: "resource" as const,
+              resource: { uri: `altai://mission/${mission_id}/${filename}`, mimeType: mime, blob },
+            },
+          ],
+        };
+      }
+      return { content: [{ type: "text" as const, text: await res.text() }] };
+    },
+  );
+
   return server;
 }
 

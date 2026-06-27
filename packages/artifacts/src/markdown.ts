@@ -1,18 +1,21 @@
 import type { SignedBrief } from "@altai/contracts";
-import { money, pct, shorten } from "./util";
+import { money, pct, shorten, mdCell, mdText } from "./util";
 
 /** A human-readable, provenance-stamped brief. Reads like an analyst note and carries
- * the cryptographic attestation in its footer. */
+ * the cryptographic attestation in its footer. All entity-controlled strings are
+ * escaped (no raw HTML, no table/`code` breakouts) — defense in depth on top of the
+ * membrane, which already scrubbed the underlying signal. */
 export function briefToMarkdown(brief: SignedBrief): string {
   const { signal } = brief;
-  const title = `${signal.entity}${signal.ticker ? ` (${signal.ticker})` : ""}`;
+  const code = (s: string) => `\`${s.replace(/`/g, "")}\``; // safe inline code (no backtick breakout)
+  const title = `${mdText(signal.entity)}${signal.ticker ? ` (${mdCell(signal.ticker)})` : ""}`;
   const L: string[] = [];
 
   L.push(`# Altai Intelligence Brief`);
   L.push("");
-  L.push(`**${title}** — \`${signal.event_type}\``);
+  L.push(`**${title}** — ${code(signal.event_type)}`);
   L.push("");
-  L.push(`> ${signal.summary}`);
+  L.push(`> ${mdText(signal.summary)}`);
   L.push("");
 
   L.push(`| Field | Value |`);
@@ -26,14 +29,14 @@ export function briefToMarkdown(brief: SignedBrief): string {
 
   if (signal.alpha) {
     const a = signal.alpha;
-    L.push(`## Alpha — ${a.strategy}`);
+    L.push(`## Alpha — ${mdText(a.strategy)}`);
     L.push("");
     L.push(`| Entry | Exit | Return | Max drawdown |`);
     L.push(`|---|---|---|---|`);
-    L.push(`| ${a.entry_date} @ ${money(a.entry_price)} | ${a.exit_date} @ ${money(a.exit_price)} | ${a.return_pct != null ? `**${a.return_pct}%**` : "—"} | ${a.max_drawdown_pct != null ? `${a.max_drawdown_pct}%` : "—"} |`);
+    L.push(`| ${mdCell(a.entry_date)} @ ${money(a.entry_price)} | ${mdCell(a.exit_date)} @ ${money(a.exit_price)} | ${a.return_pct != null ? `**${a.return_pct}%**` : "—"} | ${a.max_drawdown_pct != null ? `${a.max_drawdown_pct}%` : "—"} |`);
     if (a.note) {
       L.push("");
-      L.push(`_${a.note}_`);
+      L.push(`_${mdText(a.note)}_`);
     }
     L.push("");
   }
@@ -43,7 +46,7 @@ export function briefToMarkdown(brief: SignedBrief): string {
   L.push(`| Source | Type | Reliability | Observed | URL |`);
   L.push(`|---|---|---|---|---|`);
   for (const s of signal.sources) {
-    L.push(`| ${s.name} | \`${s.type}\` | ${s.reliability.toFixed(2)} | ${s.observed_at} | ${s.url ?? "—"} |`);
+    L.push(`| ${mdCell(s.name)} | ${code(s.type)} | ${s.reliability.toFixed(2)} | ${mdCell(s.observed_at)} | ${mdCell(s.url ?? "—")} |`);
   }
   L.push("");
 

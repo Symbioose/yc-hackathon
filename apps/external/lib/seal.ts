@@ -37,9 +37,10 @@ export function membraneAndSeal(
     trace("membrane", "InjectionHunter", "success", "No prompt-injection detected in payload");
   }
 
-  // 2. Sanitizer — strip PII/secrets from anything that crosses the wall.
+  // 2. Sanitizer — scrub every field (PII, secrets, control chars, HTML, prompt-injection,
+  // unsafe URLs) before signing, so the brief AND every document derived from it are clean.
   const { signal: clean, redactions } = sanitize(signal);
-  trace("membrane", "Sanitizer", "success", `PII/secrets stripped (${redactions} redaction${redactions === 1 ? "" : "s"})`);
+  trace("membrane", "Sanitizer", "success", `Brief scrubbed — ${redactions} redaction${redactions === 1 ? "" : "s"} (PII · secrets · HTML · injection · URLs)`);
 
   // 3. Build the Merkle-rooted audit ledger from the mission trace; Judge signs the brief.
   const entries = buildLedger(getEvents(mission.id).map((e) => ({ ts: e.ts, actor: e.agent, action: e.msg, source: e.layer })));

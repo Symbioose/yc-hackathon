@@ -109,7 +109,7 @@ Two consequences fall out of the topology, and both are demonstrable:
 
 The dispatch layer is exposed over **MCP** so *any* MCP-capable agent — not just our UI — can launch missions. The design is intentionally thin:
 
-- **`apps/research-mcp` is a thin MCP adapter over `apps/external`.** It owns no research logic, fleet, mock data, audit or crypto. It speaks MCP (Streamable HTTP) and forwards each tool call to the external gateway via `EXTERNAL_URL`. Tools: `dispatch_research_mission` → `POST /api/missions`, `get_mission_status` → `GET /api/missions/:id/signal`, `fetch_signal` → `GET /api/missions/:id/signal` + `/audit`.
+- **`apps/research-mcp` is a thin MCP adapter over `apps/external`.** It owns no research logic, fleet, mock data, audit or crypto. It speaks MCP (Streamable HTTP) and forwards each tool call to the external gateway via `EXTERNAL_URL`. Tools: `dispatch_research_mission` → `POST /api/missions`, `get_mission_status` → `GET /api/missions/:id/signal`, `fetch_signal` → `GET /api/missions/:id/signal` + `/audit`, and `export_brief_document` → `GET /api/missions/:id/export?format=` (so an MCP agent gets the Excel/CSV/Markdown/JSON/STIX file directly — `.xlsx` as an embedded base64 resource).
 - **`apps/external` remains the real research pipeline** — the single source of truth. The MCP path and the direct HTTP path run the *exact same* governed flow (policy → identity isolation → web/Tor/breach fleet → membrane → Ed25519/Merkle audit). No duplicated fleet.
 - **Policy blocking is enforced at ingress** (`apps/external/lib/policy.ts`, in `POST /api/missions`). Because it sits at the single mission entry point, *every* caller — the sealed agent, the MCP adapter, any future agent — is governed identically. Out-of-scope/unsafe missions are rejected with `403` before any execution.
 - **`apps/internal` keeps two panels for demo/debugging.** The top **direct-HTTP** panel exercises the existing pipeline directly; the bottom **MCP** panel dispatches through `research-mcp`. Both hit the same `external-app`, so there is no behavioural divergence.
@@ -137,7 +137,7 @@ Every mission crosses six layers; every action is recorded into the audit ledger
    - **Tor Scout** — Ahmia discovery + a live `.onion` fetch over SOCKS5, reporting the real Tor exit IP and country.
    - **Breach Scout** — HIBP / IntelX breach corroboration.
 5. **Membrane** — an adversarial inbound panel. Nothing crosses back until it passes:
-   - **Sanitizer** — strips PII, secrets, and malware from anything returned.
+   - **Sanitizer** — scrubs every field of the brief (PII, secrets, control chars, HTML/script, prompt-injection, unsafe URL schemes) *before* it is signed, so everything downstream — including generated documents — is clean by construction.
    - **Injection Hunter** — scans fetched dark-web/web content for prompt-injection and identity-exfil attempts; quarantines on hit.
    - **Judge** — requires a clean pass, then signs the brief.
 6. **Audit & attestation** — every action is hash-chained into a Merkle ledger; the Judge signs `canonical(signal) + merkleRoot` with Ed25519. The sealed side independently verifies the signature against the embedded public key. Tampering with any audit entry breaks the recomputed root while the signature stays valid — i.e. tampering is mathematically detectable.
@@ -240,7 +240,16 @@ flowchart LR
 | **`.json`** | The full `SignedBrief` (signature + public key + audit root) | Machines, re-verification |
 | **`.stix.json`** | **STIX 2.1** bundle (Identity + Indicators + Report + Relationships) with Altai attestation as `x_altai_*` custom properties | SIEM / TIP — OpenCTI, MISP, Sentinel, Splunk, QRadar |
 
-These are the same formats real threat-intel platforms export, so an Altai brief drops straight into an existing security stack. The catalogue lives in `@altai/artifacts`; the gateway serves files at `GET /api/missions/:id/export?format=…` and the ops-center SIGNAL panel exposes one-click **Deliverables** buttons. The same surface works for any caller — the sealed agent, the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission), or a future agent.
+These are the same formats real threat-intel platforms export, so an Altai brief drops straight into an existing security stack. The catalogue lives in `@altai/artifacts`; the gateway serves files at `GET /api/missions/:id/export?format=…` and the ops-center SIGNAL panel exposes one-click **Deliverables** buttons. The same surface works for any caller — the sealed agent, the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission) (`export_brief_document` tool, with `.xlsx` returned as an embedded base64 resource), or a future agent.
+
+#### Safe by construction — a generated file can't carry an attack
+
+Turning untrusted intelligence into files opens real attack surfaces, so safety is enforced in **two layers**:
+
+1. **The membrane (trust boundary).** Because the brief is sanitized *before* it is signed, every document inherits the guarantee. `sanitize()` scrubs **every** human-controlled field — PII, secrets, C0/C1 + zero-width control chars, HTML/script tags, prompt-injection payloads, and unsafe URL schemes (`javascript:`/`data:`/`file:` → `[BLOCKED_URL]`).
+2. **Per-format encoding (defense in depth).** Each renderer hardens its own grammar: **CSV/XLSX** defuse spreadsheet **formula injection** (CWE-1236 — a leading `= + - @` is prefixed with `'`); **Markdown** escapes table/HTML breakouts; **STIX** escapes the URL inside the pattern string. JSON is data-only; filenames are slugged (no header/path injection).
+
+The net effect: open the `.xlsx` in Excel, the `.md` in any renderer, or feed the STIX bundle to a SIEM — none of them can execute attacker-controlled content.
 
 ```bash
 # the agent writes you a real Excel workbook from the signed brief:
@@ -489,7 +498,8 @@ for `xlsx`. Every artifact embeds the brief's Ed25519 signature + Merkle root.
 - **No credentials on the sealed side.** API keys live only on the gateway. The sealed environment can't leak what it doesn't hold.
 - **Identity isolation.** The client's identity, IP, and raw query never leave the gateway; the fleet acts under Altai's egress.
 - **Defensive / read-only.** Scope is fixed to OSINT read-only. The fleet observes and reports; it never transacts.
-- **Inbound membrane.** Returned content is sanitized (PII/secrets/malware) and scanned for prompt-injection before it can reach the sealed agent.
+- **Inbound membrane.** Every human-controlled field of the brief is sanitized *before signing* — PII, secrets, control chars, HTML/script, prompt-injection, and unsafe URL schemes — and dark-web/web snippets are scanned for prompt-injection (quarantine on hit). Because it happens pre-signature, the sealed agent, the UI, and every generated document inherit a clean signal.
+- **Safe document generation.** On top of the membrane, each export format hardens its own grammar (CSV/XLSX formula-injection neutralization, Markdown table/HTML escaping, STIX pattern escaping), so an exported `.xlsx`/`.md`/STIX file can't execute attacker-controlled content (CWE-1236 / XSS / injection).
 - **Tamper-evident provenance.** Every action is hash-chained into a Merkle ledger; the brief is Ed25519-signed over the signal plus the Merkle root. Altering any entry breaks the recomputed root, and the sealed side detects it on verification.
 - **Independently verifiable.** The signing public key travels inside the `SignedBrief`, so any recipient can confirm authenticity offline — no shared secret, no trusted call-back to Altai. `POST /api/verify` (and the ops-center drop-zone) re-checks the signature; one altered byte flips it to forged.
 
@@ -502,7 +512,7 @@ pnpm test        # all packages
 pnpm typecheck   # all packages
 ```
 
-Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection, independent forged-brief rejection, key fingerprint), the tools (web/breach), the agents (planner synthesis, membrane injection detection), the fixtures (confidence fusion and AlphaCard computation), the Intelligence Network (fingerprint privacy/entity-stripping, cosine retrieval, the membrane-as-oracle reward model, the locked cold→warmed before/after, and ROI), and the artifacts (CSV escaping, deterministic STIX 2.1 bundle, and a real round-tripped `.xlsx`).
+Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection, independent forged-brief rejection, key fingerprint), the tools (web/breach), the agents (planner synthesis, membrane injection detection, and full-field sanitization — HTML/control-char/injection/secret/unsafe-URL scrubbing with no false positives on clean briefs), the fixtures (confidence fusion and AlphaCard computation), the Intelligence Network (fingerprint privacy/entity-stripping, cosine retrieval, the membrane-as-oracle reward model, the locked cold→warmed before/after, and ROI), and the artifacts (CSV escaping, deterministic STIX 2.1 bundle, a real round-tripped `.xlsx`, and document-security: CSV/XLSX formula-injection + Markdown/STIX injection neutralization).
 
 ---
 

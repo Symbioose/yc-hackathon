@@ -23,14 +23,37 @@ export function deterministicUuid(seed: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
-/** Escape a single CSV cell per RFC 4180 (quote if it contains comma/quote/newline). */
+/**
+ * Defuse spreadsheet formula injection (CWE-1236 / OWASP). A cell that a spreadsheet
+ * could interpret as a formula (`= + - @`, tab, CR) is prefixed with a single quote so
+ * Excel/Sheets/LibreOffice treat it as literal text. Applied to CSV and XLSX text cells.
+ */
+export function neutralizeFormula(value: string): string {
+  return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+
+/** Escape a single CSV cell: formula-neutralized, then RFC-4180 quoted if needed. */
 export function csvCell(value: unknown): string {
-  const s = value == null ? "" : String(value);
+  const s = neutralizeFormula(value == null ? "" : String(value));
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export function csvRow(cells: unknown[]): string {
   return cells.map(csvCell).join(",");
+}
+
+/** Make a value safe inside a Markdown table cell: kill table/HTML breakouts + newlines. */
+export function mdCell(value: unknown): string {
+  return String(value ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\|/g, "\\|")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Make free-text Markdown (prose) safe: neutralize raw HTML angle brackets. */
+export function mdText(value: unknown): string {
+  return String(value ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 export const pct = (n: number): string => `${Math.round(n * 100)}%`;
