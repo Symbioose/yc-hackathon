@@ -37,9 +37,9 @@ Periscope is the **sovereign external-action layer for air-gapped enterprise age
 |---|---|
 | Language | **TypeScript everywhere** |
 | Apps & gateway | **Next.js (App Router)** — two apps |
-| Agent orchestration | **Vercel AI SDK** (`ai` + `@ai-sdk/anthropic`) |
-| Fleet model | `claude-sonnet-4-6` (Scouts + membrane verifiers), `claude-opus-4-8` (Planner + Membrane Judge) |
-| **Sealed agent brain** | `claude-sonnet-4-6` **routed through the gateway's on-prem LLM proxy** (see §4.1) — *not* a local model |
+| Agent orchestration | **Vercel AI SDK** (`ai` + `@ai-sdk/openai`) — provider-agnostic; reverting to Anthropic later is a one-import swap |
+| LLM provider | **OpenAI** via `@ai-sdk/openai`. Models: `OPENAI_MODEL_FAST` (Scouts + verifiers) · `OPENAI_MODEL_STRONG` (Planner + Judge). Set exact IDs + `OPENAI_API_KEY` in `.env` (key lives only in `external-app`). |
+| **Sealed agent brain** | `OPENAI_MODEL_FAST` **routed through the gateway's on-prem LLM proxy** (see §4.1) — *not* a local model |
 | Ollama (optional, roadmap) | nice-to-have only: the "even a weak local model gets external reach" narrative. Never on the critical path. |
 | Schemas / contract | **Zod** (shared package) |
 | Live trace transport | **SSE** (AI SDK streaming → ops-center UI) |
@@ -50,7 +50,7 @@ Periscope is the **sovereign external-action layer for air-gapped enterprise age
 | Packaging | pnpm workspace + Turborepo |
 | Runtime | **Docker Compose**, 2 networks (see §5) |
 
-**Why no Ollama on the critical path:** CPU-only in Docker on Mac (slow) and unreliable tool-calling on a 3B model = highest fragility-per-value. The sealed agent doesn't need to be impressive — it must only *fail to reach the internet* and *dispatch*. A network-sealed Claude is just as air-gapped, and far more reliable.
+**Why no Ollama on the critical path:** CPU-only in Docker on Mac (slow) and unreliable tool-calling on a 3B model = highest fragility-per-value. The sealed agent doesn't need to be impressive — it must only *fail to reach the internet* and *dispatch*. A network-sealed OpenAI agent is just as air-gapped, and far more reliable.
 
 ---
 
@@ -60,7 +60,7 @@ Periscope is the **sovereign external-action layer for air-gapped enterprise age
 ╔════════ DOCKER "internal" (network internal:true — NO internet) ════════╗
 ║  apps/internal (Next)                                                    ║
 ║   ├─ chat UI (sober)                                                     ║
-║   └─ sealed agent (Claude brain via gateway proxy; holds NO API key)     ║
+║   └─ sealed agent (OpenAI brain via gateway proxy; holds NO API key)    ║
 ║        tools:  dispatch()  → the only egress that does anything external ║
 ║                fetch_url() → fails (no internet, network layer)          ║
 ║        only reachable host = external-app ──────────────────────────────╫─┐
@@ -68,7 +68,7 @@ Periscope is the **sovereign external-action layer for air-gapped enterprise age
                                                                              ▼
 ╔════════ DOCKER "external" (internet) ═══════════════════════════════════╗
 ║  apps/external (Next) = ON-PREM LLM PROXY + GATEWAY + FLEET + OPS UI     ║
-║   /api/onprem-llm  → proxies sealed agent's Claude calls (key lives here)║
+║   /api/onprem-llm  → proxies sealed agent's OpenAI calls (key lives here)║
 ║   gateway: POST /missions · GET /missions/:id/stream (SSE) · /signal     ║
 ║   6 layers per mission:                                                  ║
 ║     1 Dispatch ingress                                                   ║
@@ -85,10 +85,10 @@ Periscope is the **sovereign external-action layer for air-gapped enterprise age
 ╚═════════════════════════════════════════════════════════════════════════╝
 ```
 
-### 4.1 Sealed agent brain (network-sealed Claude)
-The sealed agent is a real Claude agent (`claude-sonnet-4-6`), but its Anthropic calls go through `external-app`'s `/api/onprem-llm` proxy — the only host it can reach. Consequences:
+### 4.1 Sealed agent brain (network-sealed OpenAI agent)
+The sealed agent is a real OpenAI agent (`OPENAI_MODEL_FAST`), but its LLM calls go through `external-app`'s `/api/onprem-llm` proxy — the only host it can reach. Consequences:
 - The internal container is on `internal:true` → **genuinely no internet** (`docker exec internal-app curl https://google.com` → timeout). Cage is real and demonstrable.
-- The **Anthropic API key lives only in `external-app`**, never in the sealed container → the firm's environment holds no credentials and has no wire access. Extra air-gap talking point.
+- The **OpenAI API key lives only in `external-app`**, never in the sealed container → the firm's environment holds no credentials and has no wire access. Extra air-gap talking point.
 - Framing: the proxy is the "on-prem inference endpoint"; `dispatch` is the audited egress. The internal agent only ever talks to its local Periscope endpoint.
 - `fetch_url()`/`search_web()` tools attempt real outbound requests → fail at the network layer → the agent concludes it must `dispatch`.
 
@@ -205,10 +205,10 @@ TraceEvent = {
 
 ### 7.1 Research swarm (Execution layer)
 Real Vercel AI SDK tool-calling agents, run in parallel:
-- **Planner** (`claude-opus-4-8`) — decomposes mission → assigns Scouts → synthesizes a candidate Signal.
-- **Web Scout** (`claude-sonnet-4-6`) — tool: `fetch_url`.
-- **Tor Scout** (`claude-sonnet-4-6`) — tools: `ahmia_search`, `tor_fetch` (live SOCKS5 `.onion`; emits exit IP + circuit into `meta`).
-- **Breach Scout** (`claude-sonnet-4-6`) — tools: `hibp_lookup`, `intelx_search`.
+- **Planner** (`OPENAI_MODEL_STRONG`) — decomposes mission → assigns Scouts → synthesizes a candidate Signal.
+- **Web Scout** (`OPENAI_MODEL_FAST`) — tool: `fetch_url`.
+- **Tor Scout** (`OPENAI_MODEL_FAST`) — tools: `ahmia_search`, `tor_fetch` (live SOCKS5 `.onion`; emits exit IP + circuit into `meta`).
+- **Breach Scout** (`OPENAI_MODEL_FAST`) — tools: `hibp_lookup`, `intelx_search`.
 
 Every tool call/step streams a `TraceEvent`.
 
@@ -218,9 +218,9 @@ Candidate Signal crosses back **only** on full PASS; the Judge then signs.
 **Core (always build — sufficient for the wow):**
 | Agent | Model | Role |
 |---|---|---|
-| **Sanitizer** | `claude-sonnet-4-6` | strip PII/secrets/malware/raw illicit payloads; show redaction diff |
-| **Injection Hunter** | `claude-sonnet-4-6` | adversarially scan fetched content for prompt-injection / client-identity exfil / payloads → **catches the planted injection live** |
-| **Judge / Attestor** | `claude-opus-4-8` | require PASS from all verifiers → sign Signal + Merkle root |
+| **Sanitizer** | `OPENAI_MODEL_FAST` | strip PII/secrets/malware/raw illicit payloads; show redaction diff |
+| **Injection Hunter** | `OPENAI_MODEL_FAST` | adversarially scan fetched content for prompt-injection / client-identity exfil / payloads → **catches the planted injection live** |
+| **Judge / Attestor** | `OPENAI_MODEL_STRONG` | require PASS from all verifiers → sign Signal + Merkle root |
 
 **Extended (if time; otherwise drop/merge):**
 | Agent | Role |
@@ -252,7 +252,7 @@ The brief is not "we'd have known 4 days early" — it's a tradeable signal. The
 
 ```
 apps/
-  internal/    Next: chat UI + sealed agent (Claude via proxy, dispatch-only egress)   [Emile]
+  internal/    Next: chat UI + sealed agent (OpenAI via proxy, dispatch-only egress)  [Emile]
   external/    Next: on-prem LLM proxy + gateway + fleet + membrane + ops-center UI     [Emile scaffolds; Louis/Dung fill]
 packages/
   contracts/   Zod: Mission · SourceContribution · Signal · AlphaCard · AuditEntry · SignedBrief · TraceEvent  [team, lock H0]
@@ -371,7 +371,7 @@ Swap fixtures → real without touching the contract seam.
 | Item | Status |
 |---|---|
 | **Hero case** | **LOCKED** — Ticketmaster/LYV (SEC-documented, 4-day edge) primary; Medibank/MPL.AX secondary for magnitude. |
-| **Sealed agent reliability** | **Resolved** — network-sealed Claude via gateway proxy; Ollama off the critical path (optional roadmap flavor). |
+| **Sealed agent reliability** | **Resolved** — network-sealed OpenAI agent via gateway proxy; Ollama off the critical path (optional roadmap flavor). |
 | `internal:true` host port-publishing | Verify Phase 0; fallback = serve internal UI via `external-app` proxy. Cage proof via `docker exec` unaffected. |
 | Live Tor flakiness | One live fetch for credibility; pre-warm circuits; hero is cached. |
 | Membrane latency | Verifiers run in parallel; core = 3 agents; cache the hero path; sonnet for verifiers. |
