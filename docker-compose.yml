@@ -25,7 +25,20 @@ services:
 
   internal-app:
     build: { context: ., dockerfile: apps/internal/Dockerfile }
-    networks: [internal]             # sealed: can only reach external-app
+    networks: [internal]             # sealed: can only reach external-app + research-mcp
     environment:
+      EXTERNAL_URL: "http://external-app:3000"
+      RESEARCH_MCP_URL: "http://research-mcp:3200/mcp"
+    depends_on: [external-app, research-mcp]
+
+  # Research MCP layer — thin MCP-to-HTTP adapter over external-app's pipeline.
+  # The sealed internal-app reaches it over the internal network as an egress hole;
+  # it in turn forwards every mission to external-app (the real research fleet).
+  research-mcp:
+    build: { context: ., dockerfile: apps/research-mcp/Dockerfile }
+    networks: [internal, external]   # internal: sealed side can call it; external: reach external-app + host port
+    ports: ["3200:3200"]
+    environment:
+      MCP_PORT: "3200"
       EXTERNAL_URL: "http://external-app:3000"
     depends_on: [external-app]
