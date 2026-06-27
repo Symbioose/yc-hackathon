@@ -10,7 +10,7 @@ export default function SealedChat() {
   async function ask() {
     setSignal(null);
     setStatus("Sealed agent: no internet — dispatching mission to Periscope…");
-    const r = await fetch("/api/dispatch", {
+    const r = await fetch("/bank/api/dispatch", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ query: q, ticker: "LYV", target_entity: "Live Nation" }),
@@ -19,7 +19,7 @@ export default function SealedChat() {
     setStatus("Mission dispatched. Awaiting sanitized, signed brief…");
     for (let i = 0; i < 40; i++) {
       await new Promise((res) => setTimeout(res, 800));
-      const sr = await fetch(`/api/signal/${id}`);
+      const sr = await fetch(`/bank/api/signal/${id}`);
       if (sr.status === 200) { setSignal(await sr.json()); setStatus("Brief received."); return; }
     }
     setStatus("Timed out waiting for brief.");

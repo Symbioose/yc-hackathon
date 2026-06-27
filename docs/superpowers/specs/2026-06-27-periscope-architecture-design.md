@@ -110,7 +110,7 @@ services:
 
 **Cage proof:** `internal-app` on `internal:true` → genuinely no internet; can reach only `external-app`.
 
-**Open implementation question (verify in Phase 0):** Docker may restrict host **port publishing** for a container only on an `internal:true` network. Mitigation order: (a) confirm publishing works; if not, (b) serve the internal chat UI through `external-app` (a route proxying to the sealed agent over the internal network). The cage proof via `docker exec … curl` is independent of UI exposure and stays valid either way.
+**RESOLVED:** Docker does restrict host port-publishing for containers on an `internal:true` network — confirmed in Phase 0. The internal chat UI is now served through `external-app` at `/bank` via a Next.js rewrite proxy (`source: "/bank/:path*"` → `http://internal-app:3100/bank/:path*`). `internal-app` runs with `basePath: "/bank"` and has no host port exposed. The cage proof via `docker exec internal-app curl https://google.com` is unaffected — `internal-app` remains fully sealed (no internet, no host port).
 
 ---
 
