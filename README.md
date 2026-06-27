@@ -1,68 +1,71 @@
-# Keystone — Execution Risk Intelligence
+# Periscope — The Sovereign External-Action Layer for Air-Gapped Enterprise Agents
 
 > **Paris Builds hackathon** (Unaite × YC) · 27–28 June 2026 · 36h · Prize: €20k + YC interview + a day at QRT
-> **Track:** The Next Big DecaCorn
-> **Goal:** WIN. Demo that silences the room + real traction + QRT-grade technical depth.
+> **Track:** Software for Agents
+> **Goal:** WIN. A demo that silences the room + a warm paying buyer + QRT-grade technical depth.
 
 ---
 
 ## 🧩 One-liner
 
-**Keystone is the "Aladdin for organizational execution risk."**
-It ingests a company's work signals (Slack / email / CRM — metadata only), builds a **living graph** of how work *really* flows, quantifies the **probability that critical projects fail** (Org-VaR), stress-tests shocks ("what if this key person leaves?"), and recommends the **single move** to de-risk the org.
+**Periscope is the compliant window to the outside world for enterprise AI agents.**
+Your internal agents are sealed off from the internet by your CISO/DSI. Periscope lets them dispatch missions to a fleet of specialized, isolated external agents (a web-research agent, a Tor/dark-web agent, …) that act on everything your firewall blocks — the open web, blocked sites, closed sources and Tor — and return a **sanitized, audited, sourced intelligence brief**, without ever exposing your identity or your queries.
 
-> Viva Insights shows you how your team collaborated last month. **Keystone tells you which project will fail next month, who the breaking point is, and the one move to prevent it.** Analytics → Risk management.
+> Recorded Future sells you a static feed for humans. **Periscope gives your sealed agents eyes — they dispatch a mission, an isolated fleet acts on the forbidden outside, and you get a provenance-stamped, tradeable signal back — without opening the hull.**
+
+---
+
+## 🔥 Validation
+
+**QRT — the hackathon's biggest sponsor and a judge — told us directly that they have many blocked sites and would love to research them securely.** The buyer in the room verbalized the exact pain. We also have a **trader (warm, already willing to pay)** for the alt-data alpha use case.
 
 ---
 
 ## 🎯 The problem
 
-Every company runs on an **invisible org** that has nothing to do with the org chart:
-- **Key-person risk** — a critical project depends on one person; they leave/burn out → project dies.
-- **Hidden bottlenecks** — a few overloaded connectors slow the whole org.
-- **Execution risk** — a project will slip in 3 weeks due to structural overload, and nobody sees it coming.
+Enterprises are racing to deploy internal AI agents — but the CISO/DSI imposes a hard rule (especially in finance, FR & US):
+- **No outbound. The agent runtime is air-gapped.** No web, no third-party APIs, no Tor.
+- The firm wants **external intelligence** but **forbids its own agents from reaching out**.
 
-Today this is "felt" by managers or mapped *once, statically* by consultants for $100K–$300K. **Nobody quantifies it as a continuous, predictive risk.**
+Today the only options are a static vendor feed (generic, slow, not agent-native), a slow human, or breaking the security posture. **There is no agent-native, compliant, audited egress layer.**
 
 ---
 
 ## 💡 The solution (what we build)
 
-Treat the org like a **portfolio** and apply quant risk management to it:
+Periscope = a controlled egress gateway + an isolated, specialized external agent fleet.
 
-1. **Ingest** → connect a data source (demo: Enron corpus / a real GitHub org / live Slack). Metadata only.
-2. **Graph** → living temporal graph. Nodes = people/teams, edges = real collaboration flows (weighted by frequency + recency).
-3. **Quantify risk**:
-   - **Concentration risk** (key-person) → centrality + articulation points
-   - **Load forecast** per node/edge → time-series (seasonality + trend)
-   - **Org-VaR** → probability × magnitude of execution failure
-4. **Stress test** → "remove this person" / "Q4 demand surge" → graph fractures, Org-VaR spikes.
-5. **Optimize & act** → agent recommends the minimal reallocation that drops risk below threshold.
-6. **Report** → anonymized, exec-ready risk report.
+1. **Dispatch (the only hole in the wall)** → the internal agent calls Periscope via an **MCP server / SDK**: `periscope.dispatch(mission)`. Single, audited, policy-enforced egress point.
+2. **Broker + policy** → enforce allowed sources/scope/spend, log **every action** for compliance/audit, guarantee the client's identity & raw queries are **never** exposed.
+3. **Specialized external fleet** → isolated workers with their own identities/egress: a **web-research agent** (open + blocked sites), a **Tor/dark-web agent** (Ahmia/IntelX + a real Tor SOCKS fetch), a **data-API agent** (HIBP/Dehashed/IntelX).
+4. **Signal extraction** → unstructured findings → `{entity/ticker, event_type, confidence, source, timestamp}`.
+5. **Sanitized return** → only the clean, classified brief + audit trail crosses the wall. No raw dark-web payloads enter the firm.
+6. **Backtest / lead-time** → overlay signal timestamp vs price action → quantify the alpha ("known N days before public disclosure").
 
 ---
 
 ## 🎬 The demo (60–90s) — this is what we rehearse
 
-1. **Connect real data** → ingest Enron (real company, real collapse) or a real GitHub org.
-2. **Graph comes alive** → real people, real flows, pulsing. Keystone nodes glow.
-3. **Reveal the hidden org** → "Org chart says these 5 are critical. The data says these 3 hidden people carry the company. 1 project depends on a single person."
-4. **Scrub time forward** → a team turns red → "Q4: overload 140%, Project Falcon = 73% delay probability."
-5. **Stress test live** → "What if this keystone person leaves?" → graph fractures, Org-VaR €1.2M → €4.8M.
-6. **Agent acts** → proposes optimal reallocation → red turns green, Org-VaR drops.
-7. **Output** → anonymized exec risk report.
+Split screen: **LEFT** = sealed corporate env (internal agent, big "NO INTERNET / AIR-GAPPED" badge). **RIGHT** = the Periscope external fleet operating in the wild.
 
-> Killer line (Enron version): *"Keystone would have flagged the risk concentration months before the collapse."*
+1. **The sealed agent asks** → "Is issuer **X** (public company) compromised?" — and it **cannot reach out**. It can only `dispatch`.
+2. **Periscope raises the periscope** → on the right, the web-agent + Tor-agent fan out across real OSINT + a controlled breach source, live.
+3. **It finds a real signal** on a **real historical case** → credential dump posted on a forum **before** public disclosure.
+4. **Sanitized result crosses the wall** → *"X: credential dump detected [date], confidence 0.86, source [forum], J-12 before public disclosure. Full audit trail attached."*
+5. **The kicker — the backtest** → overlay the signal timestamp on X's stock chart → *"Periscope would have known 12 days before the market."*
+6. **Compliance close** → show the audit log: every external action scoped & recorded; the firm's identity never left the building.
+
+> Killer line: *"Your agents are blind by design. Periscope gives them eyes — without opening the hull."*
 
 ---
 
-## 🏆 Why it wins (winning patterns from past hackathons)
+## 🏆 Why it wins
 
-- **World > dashboard** → a living, fracturing org graph, not a table.
-- **Simulation must produce a decision** → stress test → quantified risk → optimal action.
-- **Sponsor frontier (QRT)** → portfolio risk math (concentration risk, VaR, stress test, optimization). QRT lives in this. Lead with the math.
-- **Real data, no fake** → Enron / GitHub / live Slack = undeniable. Kills the "fake demo data" problem.
-- **Traction** → we collect real waitlist signups from real, *relevant* buyers (state numbers only if true and defensible).
+- **Agent infra that's simple to tell + technically impressive** → "the egress layer for sealed enterprise agents." One sentence, deep build. MCP-native.
+- **Impossible transformation, real data** → a sealed agent → real signal on a real breach → quantified lead-time on a real stock move.
+- **Sponsor validated the pain** → QRT told us they need exactly this.
+- **Decision, not a dashboard** → the mission returns a tradeable, provenance-stamped signal.
+- **Compliance is the moat** → defensive/OSINT, fully audited, identity-isolated. The scary part becomes the differentiator.
 
 ---
 
@@ -70,15 +73,14 @@ Treat the org like a **portfolio** and apply quant risk management to it:
 
 | Layer | Choice |
 |---|---|
-| Frontend | React + graph viz (`react-force-graph` / Sigma.js / D3) + time slider |
-| Backend | Python (FastAPI) |
-| Graph + risk | NetworkX / igraph — centrality, articulation points |
-| Forecast | lightweight time-series (seasonality + trend) |
-| Org-VaR | transparent, defensible formula (probability × value-at-risk) |
-| Optimization | greedy / LP for reallocation |
-| Agents | LangGraph + Claude (ingestion → entity/edge extraction, stress-test narration, intervention proposals) |
-| Data | Enron email corpus (public) + a real GitHub org via API; optional live Slack connector |
-| Deploy | Vercel (front) + Railway/Render (back) |
+| Sandbox-side | **MCP server** (`dispatch`, `status`, `fetch_signal`) + thin SDK; demo internal agent in a visibly sealed env |
+| Gateway/broker | Python (FastAPI) — policy, mission queue, full audit log, identity isolation |
+| External fleet | Isolated workers (VM/container, distinct egress); Tor via `tor` daemon → SOCKS5 `127.0.0.1:9050`; httpx/Playwright through it for `.onion` |
+| Collection | OSINT (web/RSS/blocked sites), Ahmia (clearnet `.onion` index), IntelX API, HIBP/Dehashed, optional Telegram (Telethon) |
+| Signal extraction | LLM → structured signal `{entity, event, confidence, source, timestamp}` |
+| Backtest | yfinance → signal timestamp vs price-move chart → lead-time |
+| Frontend | React split-screen (sealed left, fleet right) + mission trace + signal card + stock overlay + audit log |
+| Hosting | Hackathon: **VPS** (we operate the infra) + Claude API. Roadmap: on-prem / local open-weight models / SGX for query sovereignty. Front on Vercel |
 
 ---
 
@@ -86,11 +88,11 @@ Treat the org like a **portfolio** and apply quant risk management to it:
 
 | Person | Owns |
 |---|---|
-| **Louis** (CS/Math) | Graph engine + concentration risk + Org-VaR + optimization |
-| **Dung** (CS) | Data ingestion + backend + forecast pipeline |
-| **Emile** (AI/agents/demo) | Agentic layer + living-graph demo + pitch storyline |
-| **Malena** (Finance/M&A) | Risk/ROI narrative + buyer + waitlist outreach |
-| **Gibril** (hard science) | Dashboard + reliability + report export |
+| **Louis** (CS/Math) | Gateway + external fleet + signal extraction/scoring + backtest math |
+| **Dung** (CS) | Collection pipeline (OSINT/Tor/APIs) + backend + data sources |
+| **Emile** (AI/agents/demo) | MCP `dispatch` + sealed agent + split-screen demo + pitch storyline |
+| **Malena** (Finance/M&A) | Trader/QRT design partner + alpha/ROI + compliance narrative |
+| **Gibril** (hard science) | Isolation/confidential-compute architecture + reliability + audit-log export |
 
 > Assign owners from minute one. Don't let two people touch the same file in parallel.
 
@@ -98,11 +100,11 @@ Treat the org like a **portfolio** and apply quant risk management to it:
 
 ## 📅 36-hour plan
 
-- **H0–4** — lock scope + datasets (Enron + 1 GitHub org) + demo script + ownership
-- **H4–14** — core engine: ingest → temporal graph → centrality/concentration risk → load forecast → Org-VaR
-- **H14–24** — living graph UI + time slider + stress test (fracture + VaR spike) + reallocation optimization
-- **H24–32** — rehearse demo + backup video + pitch deck + first design partners
-- **H32–36** — 2–3 clean demo runs + report export + polish + submit
+- **H0–4** — lock the demo company X (a real breach that leaked before disclosure) + live sources + demo script + ownership
+- **H4–14** — core engine: MCP `dispatch` from a sealed agent → gateway (policy + audit + identity isolation) → external worker (OSINT + controlled breach/Tor source)
+- **H14–24** — signal extraction + backtest overlay (signal vs stock chart) + split-screen UI
+- **H24–32** — rehearse 60–90s demo + backup video + pitch deck + lock QRT/trader design partner & exact paid mission
+- **H32–36** — 2–3 clean demo runs + audit-log export + polish + submit
 
 ---
 
@@ -113,24 +115,23 @@ Treat the org like a **portfolio** and apply quant risk management to it:
 git clone https://github.com/Symbioose/yc-hackathon.git
 cd yc-hackathon
 
-# backend (Python)
+# backend (Python) — gateway + fleet + Tor
 # cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && uvicorn main:app --reload
 
-# frontend (React)
+# frontend (React) — split-screen demo
 # cd frontend && npm install && npm run dev
 ```
 
-> Repo structure, env vars, and run commands will be added here as we scaffold the project.
+> Repo structure, env vars (INTELX_API_KEY, HIBP_API_KEY, ANTHROPIC_API_KEY…) and run commands will be added here as we scaffold.
 
 ---
 
 ## 📊 Business / pitch essentials
 
-- **Buyer:** COO / CHRO / CFO / Head of Delivery (fast-scaling tech, consulting/agencies, PE portfolios).
-- **Model:** SaaS ($2K–$20K/mo by headcount) + event-based de-risking (reorg / M&A / layoffs — replaces $100K–$300K consulting).
-- **Vision:** the system of record for organizational risk — "Aladdin for organizations."
-- **Anti-Viva line:** "Viva is analytics. Keystone is risk management. We forecast failure and prescribe the fix."
-- **Privacy:** metadata only, aggregated + anonymized, consent + admin-controlled. Say it explicitly.
+- **Buyer:** a trader (warm, paying) + QRT (stated need) → quant funds, family offices, threat-intel teams, any enterprise air-gapping its agents.
+- **Model:** usage-based (per-mission / per-signal — pay for alpha) + platform/compliance tiers.
+- **Vision:** the **external nervous system of the agent economy** — a bidding marketplace where specialized agent providers fulfil missions for sealed enterprise agents. *(Vision, NOT the 36h MVP — MVP is a single first-party gateway.)*
+- **Anti-feed line:** "Recorded Future is a feed for humans. Periscope is an agent-native, compliant egress layer that returns a decision."
 
 ---
 
@@ -138,18 +139,19 @@ cd yc-hackathon
 
 | Risk | Mitigation |
 |---|---|
-| Demo looks like fake data | Use Enron + real GitHub org; offer live Slack connect |
-| QRT sees "HR tool" not quant | Frame as portfolio risk / Org-VaR; lead with the math |
-| Crowded space (Viva, BehaviorGraph, Cally…) | Wedge = quantified risk + stress test + optimization, not analytics |
-| Org-VaR seems hand-wavy | Keep the formula transparent; show the inputs |
-| Waitlist traction | Only claim real, relevant signups — a YC partner WILL probe "who are they?" |
+| "Just dark-web monitoring (Recorded Future)" | Lead with agent-native compliant egress + per-mission dispatch + tradeable signal, not a feed |
+| Legal/ethical alarm (Tor, wallets) | **Defensive / OSINT read-only. No illicit transactions.** Everything audited. State it up front |
+| Live Tor flakiness in demo | One real live Tor fetch to prove capability; headline breach signal pre-collected/verified |
+| Looks like a thin proxy/VPN | Show the policy + audit + identity-isolation + signal-extraction stack; emphasize MCP + isolation |
+| Signal credibility | Use a real breach that really preceded a real stock move; show provenance + timestamps |
+| Most-crowded track | Win with the impossible transformation + warm finance buyer + compliance moat |
 
 ---
 
 ## 📚 Strategic context
 
 Full strategy, scoring, competitor analysis and the detailed spec live in the brainstorm vault (`yc-brainstorm`):
-- `16_Project_Spec_Keystone.md` — source of truth for the project
+- `17_Project_Spec_Periscope.md` — source of truth for the project
 - `AGENTS.md` — strategy, QRT lever, winning patterns
 - `00_Context_Paris_Builds.md` — event, sponsors, judging
 
