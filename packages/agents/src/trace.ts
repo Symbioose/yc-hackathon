@@ -1,4 +1,4 @@
-import type { TraceEvent } from "@periscope/contracts";
+import type { TraceEvent } from "@altai/contracts";
 
 export type TraceSink = (ev: TraceEvent) => void;
 

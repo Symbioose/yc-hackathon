@@ -1,5 +1,5 @@
-import type { Mission, TraceEvent } from "@periscope/contracts";
-import { heroSignal } from "@periscope/fixtures";
+import type { Mission, TraceEvent } from "@altai/contracts";
+import { heroSignal } from "@altai/fixtures";
 import { emitTrace } from "./missionStore";
 import { membraneAndSeal } from "./seal";
 
@@ -10,7 +10,7 @@ type Step = Pick<TraceEvent, "layer" | "agent" | "level" | "msg"> & { meta?: Rec
 const SCRIPT: Step[] = [
   { layer: "dispatch", agent: "Gateway", level: "info", msg: "Mission received via sealed egress" },
   { layer: "policy", agent: "PolicyAgent", level: "success", msg: "Mission within tenant policy (osint_readonly)" },
-  { layer: "identity", agent: "IdentityIsolation", level: "info", msg: "Client identity stripped; acting under Periscope egress" },
+  { layer: "identity", agent: "IdentityIsolation", level: "info", msg: "Client identity stripped; acting under Altai egress" },
   { layer: "execution", agent: "Planner", level: "action", msg: "Decomposing mission → Web/Tor/Breach scouts" },
   { layer: "execution", agent: "WebScout", level: "action", msg: "Fetching open + blocked sources" },
   { layer: "execution", agent: "TorScout", level: "action", msg: "Tor circuit established; fetching .onion", meta: { exit_ip: "185.220.101.4", country: "DE", circuit: ["FR-guard", "DE-relay", "NL-exit"] } },

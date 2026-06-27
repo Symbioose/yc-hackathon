@@ -1,5 +1,5 @@
 {
-  "name": "@periscope/agents",
+  "name": "@altai/agents",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -7,9 +7,9 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
   "dependencies": {
-    "@periscope/contracts": "workspace:*",
-    "@periscope/fixtures": "workspace:*",
-    "@periscope/tools": "workspace:*",
+    "@altai/contracts": "workspace:*",
+    "@altai/fixtures": "workspace:*",
+    "@altai/tools": "workspace:*",
     "ai": "^5.0.0",
     "@ai-sdk/openai": "^2.0.0",
     "zod": "^3.23.0"

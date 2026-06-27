@@ -1,4 +1,4 @@
-import type { Signal } from "@periscope/contracts";
+import type { Signal } from "@altai/contracts";
 
 // --- Injection Hunter: deterministic detector (LLM pass optional/secondary) ---
 const INJECTION_PATTERNS: RegExp[] = [

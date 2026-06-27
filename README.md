@@ -1,17 +1,19 @@
-# Periscope — The Sovereign External-Action Layer for Air-Gapped Enterprise Agents
+# Altai — The Sovereign External-Action Layer for Air-Gapped Enterprise Agents
 
 > **Paris Builds hackathon** (Unaite × YC) · 27–28 June 2026 · 36h · Prize: €20k + YC interview + a day at QRT
 > **Track:** Software for Agents
 > **Goal:** WIN. A demo that silences the room + a warm paying buyer + QRT-grade technical depth.
 
+> 🔭 *Altai* — like a watchtower on high ground: your sealed agents see across the whole valley while never leaving their own peak.
+
 ---
 
 ## 🧩 One-liner
 
-**Periscope is the compliant window to the outside world for enterprise AI agents.**
-Your internal agents are sealed off from the internet by your CISO/DSI. Periscope lets them dispatch missions to a fleet of specialized, isolated external agents (a web-research agent, a Tor/dark-web agent, …) that act on everything your firewall blocks — the open web, blocked sites, closed sources and Tor — and return a **sanitized, audited, sourced intelligence brief**, without ever exposing your identity or your queries.
+**Altai is the compliant window to the outside world for enterprise AI agents.**
+Your internal agents are sealed off from the internet by your CISO/DSI. Altai lets them dispatch missions to a fleet of specialized, isolated external agents (a web-research agent, a Tor/dark-web agent, …) that act on everything your firewall blocks — the open web, blocked sites, closed sources and Tor — and return a **sanitized, audited, sourced intelligence brief**, without ever exposing your identity or your queries.
 
-> Recorded Future sells you a static feed for humans. **Periscope gives your sealed agents eyes — they dispatch a mission, an isolated fleet acts on the forbidden outside, and you get a provenance-stamped, tradeable signal back — without opening the hull.**
+> Recorded Future sells you a static feed for humans. **Altai gives your sealed agents eyes on the outside world — they dispatch a mission, an isolated fleet acts on the forbidden outside, and you get a provenance-stamped, tradeable signal back — and your firm never touches the wire.**
 
 ---
 
@@ -33,9 +35,9 @@ Today the only options are a static vendor feed (generic, slow, not agent-native
 
 ## 💡 The solution (what we build)
 
-Periscope = a controlled egress gateway + an isolated, specialized external agent fleet.
+Altai = a controlled egress gateway + an isolated, specialized external agent fleet.
 
-1. **Dispatch (the only hole in the wall)** → the internal agent calls Periscope via an **MCP server / SDK**: `periscope.dispatch(mission)`. Single, audited, policy-enforced egress point.
+1. **Dispatch (the only hole in the wall)** → the internal agent calls Altai via an **MCP server / SDK**: `altai.dispatch(mission)`. Single, audited, policy-enforced egress point.
 2. **Broker + policy** → enforce allowed sources/scope/spend, log **every action** for compliance/audit, guarantee the client's identity & raw queries are **never** exposed.
 3. **Specialized external fleet** → isolated workers with their own identities/egress: a **web-research agent** (open + blocked sites), a **Tor/dark-web agent** (Ahmia/IntelX + a real Tor SOCKS fetch), a **data-API agent** (HIBP/Dehashed/IntelX).
 4. **Signal extraction** → unstructured findings → `{entity/ticker, event_type, confidence, source, timestamp}`.
@@ -46,10 +48,10 @@ Periscope = a controlled egress gateway + an isolated, specialized external agen
 
 ## 🏗️ Architecture — the layers (this is the moat, not the proxy)
 
-Every mission crosses **6 layers**, and every action is logged. This is what makes Periscope *not* "a VM with Tor".
+Every mission crosses **6 layers**, and every action is logged. This is what makes Altai *not* "a VM with Tor".
 
 ```
-  SEALED ENTERPRISE                        PERISCOPE                                 OUTSIDE WORLD
+  SEALED ENTERPRISE                        ALTAI                                 OUTSIDE WORLD
  ┌──────────────────┐   dispatch()   ┌──────────────────────────────────────┐   ┌──────────────────┐
  │  internal agent  │ ─────────────► │ 1. Dispatch (MCP)                    │   │  open web        │
  │  (NO INTERNET)   │                │ 2. Policy & governance               │   │  blocked sites   │
@@ -62,7 +64,7 @@ Every mission crosses **6 layers**, and every action is logged. This is what mak
 
 1. **Dispatch layer (MCP)** — the sealed agent's *only* egress. Tools: `dispatch`, `status`, `fetch_signal`. Nothing else in the runtime touches the outside.
 2. **Policy & governance layer** — per-tenant rules: source allow/deny-list, scope, data classes, spend caps, rate limits. Out-of-policy missions are rejected *before* execution.
-3. **Identity isolation layer** — the client's identity, IP and raw query **never leave Periscope**. External agents act under Periscope's own rotating identities/egress. The firm is never on the wire.
+3. **Identity isolation layer** — the client's identity, IP and raw query **never leave Altai**. External agents act under Altai's own rotating identities/egress. The firm is never on the wire.
 4. **Execution layer** — the specialized, isolated agent fleet (below).
 5. **Sanitization & classification layer** — raw external payloads never enter the firm; results are extracted, PII/secret/malware-stripped, classified, returned as a structured brief.
 6. **Audit & attestation layer** — every action (which agent, which source, when, what was fetched) is immutably logged; exportable compliance report; *(roadmap)* cryptographic attestation via confidential compute (SGX).
@@ -94,7 +96,7 @@ Every mission crosses **6 layers**, and every action is logged. This is what mak
 > **Rule of wow:** make the room *feel the cage* before they see the escape. Everything converges on **beat 4**.
 > **Rule of safety:** live = proof, cached = the hero signal. Pre-warm Tor circuits. Backup video ready.
 
-Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Periscope fleet in the wild.
+Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Altai fleet in the wild.
 
 1. **Prove the cage is real (tension)** → ask the sealed agent *"is issuer **X** compromised?"* → it **fails live**: `BLOCKED: egress denied by policy`, a `ping` that times out. *(Theatre: a real laptop in airplane mode / ethernet unplugged on the table = "this is the bank".)*
 2. **Dispatch → the fleet ignites (energy)** → on `dispatch`, the right pane explodes: specialized agents spawn, real-time logs stream, web-agent + Tor-agent fan out in parallel.
@@ -103,7 +105,7 @@ Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Periscope fleet i
 5. **"Oh, it's bigger" (the turn)** → take a **live ticker from the room/judge** and run the mission for real. Proves it's not scripted. *(Fallback: a pre-loaded case + the backup video.)*
 6. **Compliance close (scary → moat)** → open the **audit log**: every action scoped & timestamped → *"and the firm's identity never touched the wire. Proof, right here."*
 
-> Killer line: *"Your agents are blind by design. Periscope gives them eyes — without opening the hull."*
+> Killer line: *"Your agents are blind by design. Altai gives them eyes — and your firm never touches the wire."*
 
 ### ☠️ Wow-killers to ban
 - Latency (pre-warm Tor, pre-fetch the hero signal — never a 30s spinner live)
@@ -130,12 +132,12 @@ Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Periscope fleet i
 | Monorepo | **pnpm workspace + Turborepo**, **TypeScript** everywhere |
 | Sealed side | **Next.js** sealed chat (`apps/internal`) — dispatch-only egress; runs on a Docker `internal:true` network (genuinely no internet) |
 | Gateway / broker | **Next.js (App Router)** route handlers (`apps/external`) — mission ingress, SSE trace stream, 6-layer orchestration; bridges both networks |
-| Agent fleet | **Vercel AI SDK v5 + OpenAI** (`@periscope/agents`): Planner + Web / Tor / Breach scouts (real tool-calling) |
-| Tools | `@periscope/tools`: web fetch, **Tor** SOCKS5 (`fetch-socks` → `tor` daemon `:9050`), Ahmia (`.onion` index), HIBP / IntelX |
-| Contract | **Zod** shared package (`@periscope/contracts`): Mission · TraceEvent · Signal · AuditEntry · SignedBrief |
+| Agent fleet | **Vercel AI SDK v5 + OpenAI** (`@altai/agents`): Planner + Web / Tor / Breach scouts (real tool-calling) |
+| Tools | `@altai/tools`: web fetch, **Tor** SOCKS5 (`fetch-socks` → `tor` daemon `:9050`), Ahmia (`.onion` index), HIBP / IntelX |
+| Contract | **Zod** shared package (`@altai/contracts`): Mission · TraceEvent · Signal · AuditEntry · SignedBrief |
 | Signal | multi-source confidence fusion (noisy-OR) + quant **AlphaCard**; deterministic hero pinning for the demo |
 | Backtest | `yahoo-finance2` → price series + lead-time |
-| Frontend | React (Next): ops-center (live trace + signal card) + sealed chat, served on one origin (`/` and `/bank`) |
+| Frontend | React (Next): ops-center (live trace · signal card · **stock-overlay chart + AlphaCard + confidence-fusion bars** · audit log + tamper-demo) + sealed chat, served on one origin (`/` and `/bank`) |
 | Runtime | **Docker Compose**, 2 networks — `internal:true` (sealed) + `external` (internet + Tor) = the real cage |
 | Provider | **OpenAI** via `@ai-sdk/openai` (provider-agnostic — one-import swap back to Claude). Roadmap: on-prem / local models / SGX |
 
@@ -194,14 +196,15 @@ OPENAI_MODEL_FAST=<model id>
 # optional: HIBP_API_KEY, INTELX_API_KEY
 ```
 
-**Local dev (no Docker):** `pnpm --filter @periscope/external dev` (:3000) + `pnpm --filter @periscope/internal dev` (:3100). `pnpm test` runs the suite, `pnpm typecheck` the whole workspace.
+**Local dev (no Docker):** `pnpm --filter @altai/external dev` (:3000) + `pnpm --filter @altai/internal dev` (:3100). `pnpm test` runs the suite, `pnpm typecheck` the whole workspace.
 
 ### Status
 
 - ✅ **Phase 0** — monorepo, Zod contract, mocked end-to-end demo, real Docker cage
 - ✅ **Phase 1** — real OpenAI agent swarm (Planner + Web/Tor/Breach scouts), Tor/breach/OSINT tools, hero pinning, fallback safety
 - ✅ **Phase 2** — Membrane (Injection Hunter catches a live dark-web injection + Sanitizer + Judge) + Ed25519/Merkle audit ledger; sealed-side signature verification + live tamper-demo
-- ⏭ **Phase 3** — AlphaCard + stock-overlay UI, polish
+- ✅ **Phase 3** — hero beat: stock-overlay chart (leak vs disclosure markers) + AlphaCard (real short return computed from the price series) + noisy-OR confidence-fusion bars; Tor exit IP + geo in the live trace
+- ⏭ **Polish** — run `pnpm --filter @altai/fixtures pull-prices` for verified closes; demo rehearsal + backup video
 
 > Architecture spec & phase plans live in `docs/superpowers/specs/` and `docs/superpowers/plans/`.
 
@@ -212,7 +215,7 @@ OPENAI_MODEL_FAST=<model id>
 - **Buyer:** a trader (warm, paying) + QRT (stated need) → quant funds, family offices, threat-intel teams, any enterprise air-gapping its agents.
 - **Model:** usage-based (per-mission / per-signal — pay for alpha) + platform/compliance tiers.
 - **Vision:** the **external nervous system of the agent economy** — a bidding marketplace where specialized agent providers fulfil missions for sealed enterprise agents. *(Vision, NOT the 36h MVP — MVP is a single first-party gateway.)*
-- **Anti-feed line:** "Recorded Future is a feed for humans. Periscope is an agent-native, compliant egress layer that returns a decision."
+- **Anti-feed line:** "Recorded Future is a feed for humans. Altai is an agent-native, compliant egress layer that returns a decision."
 
 ---
 
@@ -232,7 +235,7 @@ OPENAI_MODEL_FAST=<model id>
 ## 📚 Strategic context
 
 Full strategy, scoring, competitor analysis and the detailed spec live in the brainstorm vault (`yc-brainstorm`):
-- `17_Project_Spec_Periscope.md` — source of truth for the project
+- `17_Project_Spec_Altai.md` — source of truth for the project
 - `AGENTS.md` — strategy, QRT lever, winning patterns
 - `00_Context_Paris_Builds.md` — event, sponsors, judging
 

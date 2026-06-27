@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Signal } from "@periscope/contracts";
+import type { Signal } from "@altai/contracts";
 import { buildLedger, merkleRoot, tamperEntry } from "./merkle";
 import { signBrief, verifyBrief, verifyLedger } from "./brief";
 

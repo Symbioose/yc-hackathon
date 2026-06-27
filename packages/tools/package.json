@@ -1,5 +1,5 @@
 {
-  "name": "@periscope/tools",
+  "name": "@altai/tools",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -7,8 +7,8 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
   "dependencies": {
-    "@periscope/contracts": "workspace:*",
-    "@periscope/fixtures": "workspace:*",
+    "@altai/contracts": "workspace:*",
+    "@altai/fixtures": "workspace:*",
     "fetch-socks": "^1.3.0",
     "undici": "^6.21.0"
   },

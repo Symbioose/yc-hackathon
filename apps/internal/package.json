@@ -1,5 +1,5 @@
 {
-  "name": "@periscope/internal",
+  "name": "@altai/internal",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@periscope/contracts": "workspace:*",
-    "@periscope/crypto": "workspace:*",
+    "@altai/contracts": "workspace:*",
+    "@altai/crypto": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

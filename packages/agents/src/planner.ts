@@ -1,5 +1,5 @@
-import type { Mission, Signal, SourceContribution } from "@periscope/contracts";
-import { heroCase, heroSignal, fuseConfidence } from "@periscope/fixtures";
+import type { Mission, Signal, SourceContribution } from "@altai/contracts";
+import { heroCase, heroSignal, fuseConfidence } from "@altai/fixtures";
 import { webScout, torScout, breachScout } from "./scouts";
 import type { Trace } from "./trace";
 

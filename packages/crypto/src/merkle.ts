@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { AuditEntry } from "@periscope/contracts";
+import type { AuditEntry } from "@altai/contracts";
 import { canonical } from "./canonical";
 
 export function sha256(s: string): string {

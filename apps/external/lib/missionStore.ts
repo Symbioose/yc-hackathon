@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
-import type { AuditEntry, Signal, SignedBrief, TraceEvent } from "@periscope/contracts";
-import { tamperEntry } from "@periscope/crypto";
+import type { AuditEntry, Signal, SignedBrief, TraceEvent } from "@altai/contracts";
+import { tamperEntry } from "@altai/crypto";
 
 interface MissionState {
   id: string;
@@ -15,15 +15,15 @@ interface MissionState {
 // so all routes share the same bus + missions map.
 declare global {
   // eslint-disable-next-line no-var
-  var __periscopeMissions: Map<string, MissionState> | undefined;
+  var __altaiMissions: Map<string, MissionState> | undefined;
   // eslint-disable-next-line no-var
-  var __periscopeBus: EventEmitter | undefined;
+  var __altaiBus: EventEmitter | undefined;
 }
 
 const missions: Map<string, MissionState> =
-  globalThis.__periscopeMissions ?? (globalThis.__periscopeMissions = new Map());
+  globalThis.__altaiMissions ?? (globalThis.__altaiMissions = new Map());
 
-export const bus: EventEmitter = globalThis.__periscopeBus ?? (globalThis.__periscopeBus = new EventEmitter());
+export const bus: EventEmitter = globalThis.__altaiBus ?? (globalThis.__altaiBus = new EventEmitter());
 
 bus.setMaxListeners(100);
 

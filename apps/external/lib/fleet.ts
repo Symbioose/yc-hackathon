@@ -1,4 +1,4 @@
-import type { Mission } from "@periscope/contracts";
+import type { Mission } from "@altai/contracts";
 import { runFakeFleet } from "./fakeFleet";
 import { runRealFleet } from "./realFleet";
 

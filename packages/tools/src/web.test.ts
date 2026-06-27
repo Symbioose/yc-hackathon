@@ -11,7 +11,7 @@ describe("fetchUrl", () => {
   }, 15000);
 
   it("reports a failure (no throw) for an unresolvable host", async () => {
-    const r = await fetchUrl("https://nonexistent.invalid.periscope");
+    const r = await fetchUrl("https://nonexistent.invalid.altai");
     expect(r.ok).toBe(false);
     expect(r.error).toBeTruthy();
   }, 15000);

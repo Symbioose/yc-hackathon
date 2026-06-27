@@ -1,5 +1,5 @@
 import { getBrief, getEntries, tamperMission } from "@/lib/missionStore";
-import { verifyBrief, verifyLedger } from "@periscope/crypto";
+import { verifyBrief, verifyLedger } from "@altai/crypto";
 
 /** Tamper-demo: edit one audit entry; the recomputed Merkle root diverges from the
  * signed root, so ledger verification flips to false while the signature stays valid. */

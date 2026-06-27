@@ -24,7 +24,7 @@ export async function torFetch(url: string, timeoutMs = 30000): Promise<TorResul
       // @ts-expect-error undici dispatcher is accepted at runtime by Node fetch
       dispatcher: dispatcher(),
       signal: ctrl.signal,
-      headers: { "user-agent": "PeriscopeBot/0.1" },
+      headers: { "user-agent": "AltaiBot/0.1" },
     });
     const body = await res.text();
     return { url, ok: res.ok, status: res.status, text: body.slice(0, 8000) };
@@ -35,8 +35,18 @@ export async function torFetch(url: string, timeoutMs = 30000): Promise<TorResul
   }
 }
 
-/** The Tor exit-node IP as seen by the outside world (proves foreign egress). */
-export async function getExitIp(): Promise<{ ip?: string; error?: string }> {
+/** The Tor exit-node IP + country as seen by the outside world (proves foreign egress). */
+export async function getExitIp(): Promise<{ ip?: string; country?: string; error?: string }> {
+  // ip-api returns IP + country in one call; fall back to ipify for the IP alone.
+  const geo = await torFetch("http://ip-api.com/json/?fields=query,countryCode", 30000);
+  if (geo.ok) {
+    try {
+      const j = JSON.parse(geo.text);
+      if (j.query) return { ip: j.query, country: j.countryCode };
+    } catch {
+      /* fall through */
+    }
+  }
   const r = await torFetch("https://api.ipify.org?format=json", 30000);
   if (!r.ok) return { error: r.error ?? `status ${r.status}` };
   try {
