@@ -200,7 +200,7 @@ OPENAI_MODEL_FAST=<model id>
 
 - ✅ **Phase 0** — monorepo, Zod contract, mocked end-to-end demo, real Docker cage
 - ✅ **Phase 1** — real OpenAI agent swarm (Planner + Web/Tor/Breach scouts), Tor/breach/OSINT tools, hero pinning, fallback safety
-- ⏭ **Phase 2** — Membrane (Sanitizer + Injection Hunter + Judge) + Ed25519/Merkle audit ledger + tamper-demo
+- ✅ **Phase 2** — Membrane (Injection Hunter catches a live dark-web injection + Sanitizer + Judge) + Ed25519/Merkle audit ledger; sealed-side signature verification + live tamper-demo
 - ⏭ **Phase 3** — AlphaCard + stock-overlay UI, polish
 
 > Architecture spec & phase plans live in `docs/superpowers/specs/` and `docs/superpowers/plans/`.
