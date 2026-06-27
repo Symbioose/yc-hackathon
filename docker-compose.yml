@@ -7,11 +7,12 @@ services:
     build: { context: ., dockerfile: apps/external/Dockerfile }
     networks: [internal, external]   # the single bridge
     ports: ["3000:3000"]
+    environment:
+      INTERNAL_URL: "http://internal-app:3100"
 
   internal-app:
     build: { context: ., dockerfile: apps/internal/Dockerfile }
     networks: [internal]             # sealed: can only reach external-app
     environment:
       EXTERNAL_URL: "http://external-app:3000"
-    ports: ["3100:3100"]
     depends_on: [external-app]
