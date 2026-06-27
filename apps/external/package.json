@@ -10,8 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@periscope/agents": "workspace:*",
     "@periscope/contracts": "workspace:*",
     "@periscope/fixtures": "workspace:*",
+    "@periscope/tools": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
