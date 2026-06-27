@@ -41,35 +41,40 @@ function label(route: SourceType[]): string {
  * server unchanged.
  */
 export class MemoryStore {
-  private genomes: Genome[] = [];
-  private vectors = new Map<string, number[]>();
+  // genome + its precomputed feature vector are co-located so retrieval can never
+  // mismatch a vector to the wrong genome (even on a duplicate id).
+  private entries: { genome: Genome; vector: number[] }[] = [];
   readonly graph = new RouteGraph();
 
   constructor(seed: Genome[] = loadSeedGenomes()) {
     for (const g of seed) this.add(g);
   }
 
-  /** Fold a genome into the corpus, the retrieval index, and the route graph. */
+  /** Fold a genome into the corpus, the retrieval index, and the route graph.
+   * Re-adding the same id replaces the prior entry (idempotent), but the graph still
+   * counts the observation — re-running a mission is a real, repeated signal. */
   add(g: Genome): void {
-    this.genomes.push(g);
-    this.vectors.set(g.id, featureVector(g));
+    const i = this.entries.findIndex((e) => e.genome.id === g.id);
+    const entry = { genome: g, vector: featureVector(g) };
+    if (i >= 0) this.entries[i] = entry;
+    else this.entries.push(entry);
     this.graph.observe(g);
   }
 
   size(): number {
-    return this.genomes.length;
+    return this.entries.length;
   }
 
   countFor(missionType: string): number {
-    return this.genomes.filter((g) => g.mission_type === missionType).length;
+    return this.entries.filter((e) => e.genome.mission_type === missionType).length;
   }
 
   /** k nearest past missions by cosine over the deterministic feature vector. */
   retrieve(query: Genome, k = 8): RetrievalHit[] {
     const qv = featureVector(query);
-    return this.genomes
-      .filter((g) => g.id !== query.id)
-      .map((g) => ({ genome: g, similarity: cosine(qv, this.vectors.get(g.id)!) }))
+    return this.entries
+      .filter((e) => e.genome.id !== query.id)
+      .map((e) => ({ genome: e.genome, similarity: cosine(qv, e.vector) }))
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, k);
   }
@@ -79,9 +84,9 @@ export class MemoryStore {
   similarCount(query: Genome, threshold = DEFAULT_SIMILARITY): number {
     const qv = featureVector(query);
     let n = 0;
-    for (const g of this.genomes) {
-      if (g.id === query.id) continue;
-      if (cosine(qv, this.vectors.get(g.id)!) >= threshold) n++;
+    for (const e of this.entries) {
+      if (e.genome.id === query.id) continue;
+      if (cosine(qv, e.vector) >= threshold) n++;
     }
     return n;
   }

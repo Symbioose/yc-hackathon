@@ -8,6 +8,16 @@ Altai closes that gap. A sealed internal agent **dispatches a mission** through 
 
 > Like a watchtower on high ground: your agents see across the whole valley while never leaving their own peak.
 
+### Three things make Altai a moat, not a proxy
+
+| | Pillar | What it means |
+|---|---|---|
+| 🛡️ | **Governed, identity-isolated egress** | A network-level air-gap (two Docker nets), policy at ingress, identity stripping, an adversarial inbound **membrane**, and an **Ed25519-signed, Merkle-attested** brief. Tampering is mathematically detectable. |
+| 🧠 | **The Intelligence Network (Signal DNA)** | *Procedural* memory that learns **how** a signal is found and warm-starts every new mission — measurably faster, cheaper, more accurate. The membrane is the reward oracle; what persists is entity-stripped. A compounding data network effect. |
+| 📦 | **Agent-native deliverables** | The agent doesn't just return text — it **generates files**: Excel, CSV, Markdown, JSON, and **STIX 2.1** bundles, each stamped with the brief's cryptographic provenance. |
+
+**See it in ~90 seconds:** `docker compose up --build` → open the ops-center, hit **▶ RUN INTELLIGENCE DEMO**, watch a mission go from `7 hops · 38s · $0.41 · 0.72` to `2 hops · 6s · $0.04 · 0.94`, then download the signed brief as a `.xlsx` / STIX bundle. ([Demo script ↓](#90-second-demo-script))
+
 ---
 
 ## Table of contents
@@ -16,10 +26,12 @@ Altai closes that gap. A sealed internal agent **dispatches a mission** through 
 - [Architecture](#architecture)
 - [How it works (the six layers)](#how-it-works-the-six-layers)
 - [The Intelligence Network (Signal DNA)](#the-intelligence-network-signal-dna)
+- [Agent deliverables (file generation)](#agent-deliverables-file-generation)
 - [Project structure](#project-structure)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
 - [Running the system](#running-the-system)
+- [90-second demo script](#90-second-demo-script)
 - [API reference](#api-reference)
 - [Data contracts](#data-contracts)
 - [Security model](#security-model)
@@ -50,40 +62,42 @@ A desk wants to know whether a public company has been compromised *before the m
 
 Two Docker networks enforce the air-gap at the network layer. The sealed side has **no route to the internet**; its only reachable host is the Altai gateway. The gateway is the single bridge between the sealed network and the outside world.
 
-```
-            SEALED NETWORK  (docker network: internal, internal=true — NO internet)
-          ┌───────────────────────────────────────────────────────────────────────┐
-          │   apps/internal  (Next.js, served under /bank)                          │
-          │   ┌─────────────────────────────────────────────┐                       │
-          │   │  Sealed agent                                │                       │
-          │   │  • holds NO api keys                         │                       │
-          │   │  • fetch_url()  → fails (no route out)       │                       │
-          │   │  • dispatch()   → only egress that works ────┼──┐                    │
-          │   └─────────────────────────────────────────────┘  │                    │
-          └────────────────────────────────────────────────────┼────────────────────┘
-                                                                 │ the only hole in the wall
-                                                                 ▼
-            ALTAI GATEWAY  (docker network: internal + external — the single bridge)
-          ┌───────────────────────────────────────────────────────────────────────┐
-          │   apps/external  (Next.js: gateway + fleet + membrane + ops-center UI)   │
-          │                                                                         │
-          │   1. DISPATCH        receive mission (validated against the contract)    │
-          │   2. POLICY          allow/deny sources, scope, spend — reject early     │
-          │   3. IDENTITY        strip client identity; act under Altai egress       │
-          │   4. EXECUTION  ───────────────────────────────────────────────┐        │
-          │        Planner → Web Scout · Tor Scout · Breach Scout           │        │
-          │   5. MEMBRANE   Sanitizer · Injection Hunter · Judge            │        │
-          │   6. AUDIT      Merkle ledger + Ed25519 signature → SignedBrief │        │
-          │                                                                 │        │
-          │   SignedBrief ◄── sanitized, signed, provenance-stamped ◄───────┘        │
-          └───────────────────────────────┬─────────────────────────────────────────┘
-                                           │
-                                           ▼
-            OUTSIDE WORLD  (docker network: external — internet + Tor)
-          ┌───────────────────────────────────────────────────────────────────────┐
-          │   open web · firewall-blocked sites · breach APIs (HIBP/IntelX)         │
-          │   Tor daemon (SOCKS5 :9050) → .onion / dark-web sources                 │
-          └───────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+  subgraph SEALED["🔒 SEALED NETWORK — internal=true · NO internet"]
+    direction TB
+    SA["Sealed agent (apps/internal)<br/>holds NO keys · fetch_url() fails<br/>dispatch() = the only egress"]
+  end
+
+  subgraph GATEWAY["🛰️ ALTAI GATEWAY — the single bridge (apps/external)"]
+    direction TB
+    L1["1 · Dispatch"] --> L2["2 · Policy<br/>reject out-of-scope → 403"]
+    L2 --> L3["3 · Identity isolation"]
+    L3 --> L4["4 · Execution<br/>Planner → Web · Tor · Breach"]
+    L4 --> L5["5 · Membrane<br/>Sanitizer · Injection Hunter · Judge"]
+    L5 --> L6["6 · Audit<br/>Merkle ledger + Ed25519"]
+    NET[("🧠 Intelligence Network<br/>procedural memory")]
+    L4 -. warm-start .-> NET
+    L6 -. reinforce .-> NET
+  end
+
+  subgraph OUTSIDE["🌐 OUTSIDE WORLD — internet + Tor"]
+    direction TB
+    WEB["Open + firewall-blocked web"]
+    TOR["Tor SOCKS5 → .onion"]
+    BREACH["Breach APIs · HIBP / IntelX"]
+  end
+
+  SA -->|"dispatch · the only hole in the wall"| L1
+  L6 ==>|"SignedBrief · sanitized · signed"| SA
+  L4 --> WEB & TOR & BREACH
+
+  classDef sealed fill:#18233f,stroke:#33425f,color:#c8d6f5;
+  classDef gw fill:#0a1120,stroke:#36e0ff,color:#c8d6f5;
+  classDef out fill:#0a1120,stroke:#b78bff,color:#c8d6f5;
+  class SA sealed
+  class L1,L2,L3,L4,L5,L6,NET gw
+  class WEB,TOR,BREACH out
 ```
 
 Two consequences fall out of the topology, and both are demonstrable:
@@ -130,6 +144,30 @@ Every mission crosses six layers; every action is recorded into the audit ledger
 
 **Signal intelligence.** Findings are fused into a single confidence via **noisy-OR** over independent sources, and (for finance use cases) wrapped in an **AlphaCard**: lead-time vs. public disclosure and the implied return of shorting the window, computed from the real price series.
 
+### Mission lifecycle
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant S as Sealed agent
+  participant G as Gateway (apps/external)
+  participant N as Intelligence Network
+  participant F as Scout fleet
+  participant M as Membrane + Audit
+  S->>G: dispatch(mission)  ·  the only egress
+  G->>G: policy check + identity isolation
+  G->>N: recall(genome)
+  N-->>G: route prior — "Tor→Breach, from 13 similar"
+  G->>F: run scouts (warm-started → fewer hops)
+  F-->>G: corroborating sources (web · Tor · breach)
+  G->>M: sanitize · hunt injection · judge
+  M->>M: Merkle ledger + Ed25519 signature
+  M-->>G: SignedBrief
+  G->>N: learn(genome)  ·  reward = corroborated + signed
+  G-->>S: SignedBrief (verified locally against embedded key)
+  Note over G,S: brief also downloadable as xlsx · csv · md · json · STIX
+```
+
 ---
 
 ## The Intelligence Network (Signal DNA)
@@ -146,6 +184,20 @@ This is the compounding moat, and it is **shipped** — it runs on every dispatc
 4. **Warm-start.** The Planner takes the best recalled route as a prior to **select and order the scouts** (e.g. *“Recalled route from 13 similar missions → query Tor→Breach first”*), so a warmed mission touches fewer sources than a cold one. Emitted as a new `memory` trace layer (backward-compatible).
 
 > *Privacy by construction.* What persists is abstracted structure (plan shapes, source reliabilities, link patterns) — never the raw target or query — so the network cannot reconstruct who asked what.
+
+```mermaid
+flowchart LR
+  M["Mission sealed + signed"] --> FP["fingerprint → Genome<br/>(entity-stripped)"]
+  FP --> RET["retrieve k-NN<br/>cosine over feature vector"]
+  FP --> RG["route graph<br/>reward = membrane oracle"]
+  RET --> WS["warm-start the next mission<br/>select + order the scouts"]
+  RG --> WS
+  WS --> M
+  classDef n fill:#0a1120,stroke:#5dff9b,color:#c8d6f5;
+  class M,FP,RET,RG,WS n
+```
+
+Reward is only granted when the membrane signs off, so the graph self-corrects: the seed corpus already encodes that `START → tor_forum` (reward **0.92**, 7/7 signed) and `tor_forum → breach_api` win for breach-intel, while a paste-first route that hit a quarantine is driven **negative** and never recalled.
 
 ### The transformation (deterministic demo)
 
@@ -165,6 +217,40 @@ curl -s localhost:3000/api/memory | jq '.report | {cold, warmed, route, recalled
 
 ---
 
+## Agent deliverables (file generation)
+
+A research agent that can only return prose is half a tool. Altai's agent turns a signed brief into the **file** the consumer actually needs — and every file carries the brief's Ed25519 provenance, so a spreadsheet or a SIEM feed is as verifiable as the JSON.
+
+```mermaid
+flowchart LR
+  B["SignedBrief<br/>signal + Ed25519 + Merkle root"] --> X["Excel .xlsx<br/>4 sheets"]
+  B --> C["CSV<br/>sources table"]
+  B --> MD["Markdown<br/>analyst note"]
+  B --> J["JSON<br/>raw signed brief"]
+  B --> ST["STIX 2.1 bundle<br/>SIEM / TIP ingest"]
+  classDef n fill:#0a1120,stroke:#36e0ff,color:#c8d6f5;
+  class B,X,C,MD,J,ST n
+```
+
+| Format | What it is | Who consumes it |
+|---|---|---|
+| **`.xlsx`** | Real multi-sheet workbook (Summary · Sources · Alpha · Provenance) via ExcelJS | Analysts, PMs |
+| **`.csv`** | RFC-4180 corroborating-sources table | Pipelines, spreadsheets |
+| **`.md`** | Human-readable, provenance-stamped brief | Slack / email / tickets |
+| **`.json`** | The full `SignedBrief` (signature + public key + audit root) | Machines, re-verification |
+| **`.stix.json`** | **STIX 2.1** bundle (Identity + Indicators + Report + Relationships) with Altai attestation as `x_altai_*` custom properties | SIEM / TIP — OpenCTI, MISP, Sentinel, Splunk, QRadar |
+
+These are the same formats real threat-intel platforms export, so an Altai brief drops straight into an existing security stack. The catalogue lives in `@altai/artifacts`; the gateway serves files at `GET /api/missions/:id/export?format=…` and the ops-center SIGNAL panel exposes one-click **Deliverables** buttons. The same surface works for any caller — the sealed agent, the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission), or a future agent.
+
+```bash
+# the agent writes you a real Excel workbook from the signed brief:
+curl -s "localhost:3000/api/missions/$MID/export?format=xlsx" -o brief.xlsx
+# or a STIX 2.1 bundle for your SIEM:
+curl -s "localhost:3000/api/missions/$MID/export?format=stix" | jq '.objects[].type'
+```
+
+---
+
 ## Project structure
 
 A pnpm + Turborepo monorepo. TypeScript end to end, with a single shared contract package every other package codes against.
@@ -173,17 +259,19 @@ A pnpm + Turborepo monorepo. TypeScript end to end, with a single shared contrac
 altai/
 ├── apps/
 │   ├── external/            Gateway + agent fleet + membrane + ops-center UI (port 3000)
-│   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · memory · demo · prices · health
-│   │   ├── app/page.tsx     Ops-center: live trace, intelligence-network panel, signal card, stock overlay, audit ledger
-│   │   └── lib/             gateway orchestration, mission store, real/fake fleet, membrane+seal
-│   └── internal/            Sealed enterprise app (served under /bank, port 3100)
-│       ├── app/page.tsx     Sealed chat: dispatch → await signed brief → verify signature
-│       └── app/api/         dispatch · signal (proxies to the gateway, its only egress)
+│   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · memory · demo · export · prices · health
+│   │   ├── app/page.tsx     Ops-center: live trace, intelligence-network panel, signal card, deliverables, audit ledger
+│   │   └── lib/             gateway orchestration, mission store, fleet (real/fake/demo), policy, membrane+seal, memory
+│   ├── internal/            Sealed enterprise app (served under /bank, port 3100)
+│   │   ├── app/page.tsx     Sealed chat: dispatch → await signed brief → verify signature
+│   │   └── app/api/         dispatch · signal (proxies to the gateway, its only egress)
+│   └── research-mcp/        Thin MCP adapter — exposes dispatch/fetch as MCP tools → forwards to the gateway
 ├── packages/
 │   ├── contracts/           Zod schemas: Mission · Signal · AlphaCard · AuditEntry · SignedBrief · TraceEvent · MemoryReport
 │   ├── agents/              AI-SDK swarm (Planner + memory warm-start, Scouts) + membrane (Sanitizer, Injection Hunter)
 │   ├── crypto/              Ed25519 sign/verify + Merkle ledger + tamper helper
 │   ├── memory/              Intelligence Network: fingerprint → Genome · cosine retrieve · route graph + reward · seed corpus
+│   ├── artifacts/           File deliverables: xlsx (ExcelJS) · csv · markdown · json · STIX 2.1 — provenance-stamped
 │   ├── tools/               web fetch · Tor SOCKS5 fetch · Ahmia · HIBP/IntelX
 │   └── fixtures/            verified case data + price puller + confidence fusion / AlphaCard
 ├── docker-compose.yml       two networks (internal=true, external) — the cage
@@ -272,6 +360,24 @@ pnpm --filter @altai/fixtures pull-prices
 
 ---
 
+## 90-second demo script
+
+The whole story, end to end, with zero keys required (the deterministic fleet runs offline).
+
+1. **The cage is real.** `docker compose exec internal-app curl https://google.com` times out; the same container reaches `external-app:3000/api/health`. The sealed side holds no keys and has no wire.
+2. **A governed mission.** Open the sealed app at `/bank`, dispatch *"Has Live Nation been breached?"* The ops-center lights up: policy ✓ → identity stripped → scouts deploy → a **live Tor exit IP** is reported → the **Injection Hunter quarantines** a planted dark-web prompt-injection → the **Judge signs** the brief → the **Merkle audit ledger** seals. Click **⚠ TAMPER** and watch the recomputed root turn red while the signature stays valid.
+3. **The moat — the Intelligence Network.** Hit **▶ RUN INTELLIGENCE DEMO**. The same mission replays **cold → warmed** and the panel animates live:
+   `#1: 7 hops · 38s · $0.41 · 0.72` **→** `#14: 2 hops · 6s · $0.04 · 0.94`. The learned route lights up first; run it again and the counter compounds (`#15`, `#16`…) — it's *learning*.
+4. **Agent deliverables.** From the SIGNAL card, download the brief as **Excel**, **CSV**, **Markdown**, **JSON**, or a **STIX 2.1** bundle — each carrying the Ed25519 provenance.
+5. **Any agent can do this.** The `/bank` MCP panel drives the same pipeline through the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission) — dispatch → status → fetch_signal — and gets back the identical signed brief.
+
+> One-liner to prove the learning headline without the UI:
+> ```bash
+> curl -s localhost:3000/api/memory | jq '.report | {cold, warmed, route, recalled_from, run_index}'
+> ```
+
+---
+
 ## API reference
 
 The gateway (`apps/external`) exposes the egress and observability surface.
@@ -283,6 +389,7 @@ The gateway (`apps/external`) exposes the egress and observability surface.
 | `GET` | `/api/missions/:id/signal` | The `SignedBrief` once ready (`202` while in progress). |
 | `GET` | `/api/missions/:id/audit` | Audit ledger + `signature_valid` + `ledger_ok`. |
 | `POST` | `/api/missions/:id/tamper` | Demo control: mutate one ledger entry to show tamper-evidence. |
+| `GET` | `/api/missions/:id/export?format=` | Download the brief as a file: `xlsx · csv · md · json · stix`. |
 | `GET` | `/api/memory` | Intelligence Network snapshot: the before/after `MemoryReport` + learned graph. |
 | `POST` | `/api/demo` | Run the deterministic Intelligence Network demo (same mission, cold → warmed). |
 | `GET` | `/api/prices/:ticker` | Daily close series for the overlay chart (market data, outside the signed payload). |
@@ -341,6 +448,10 @@ MemoryReport      // the before/after the ops-center renders
 { mission_type, sector, recalled_from, run_index, route[], cold, warmed, edges[] }
 ```
 
+Deliverables are generated by `@altai/artifacts` from a `SignedBrief` into an `Artifact`
+(`{ format, filename, mime, body }`) — the `body` is text for `csv/md/json/stix` and bytes
+for `xlsx`. Every artifact embeds the brief's Ed25519 signature + Merkle root.
+
 ---
 
 ## Security model
@@ -361,7 +472,7 @@ pnpm test        # all packages
 pnpm typecheck   # all packages
 ```
 
-Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection), the tools (web/breach), the agents (planner synthesis, membrane injection detection), the fixtures (confidence fusion and AlphaCard computation), and the Intelligence Network (fingerprint privacy/entity-stripping, cosine retrieval, the membrane-as-oracle reward model, and the locked cold→warmed before/after).
+Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection), the tools (web/breach), the agents (planner synthesis, membrane injection detection), the fixtures (confidence fusion and AlphaCard computation), the Intelligence Network (fingerprint privacy/entity-stripping, cosine retrieval, the membrane-as-oracle reward model, and the locked cold→warmed before/after), and the artifacts (CSV escaping, deterministic STIX 2.1 bundle, and a real round-tripped `.xlsx`).
 
 ---
 
@@ -372,7 +483,10 @@ Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root
 - **Agents:** Vercel AI SDK (`ai` + `@ai-sdk/openai`) — provider-agnostic (one-import swap).
 - **Contracts:** Zod.
 - **Crypto:** Node `crypto` (Ed25519) + a hand-rolled Merkle ledger.
+- **Memory:** in-house procedural-memory engine (deterministic feature vectors + cosine + a reward-weighted route graph) — zero ML deps.
+- **Deliverables:** `exceljs` for real `.xlsx`; hand-rolled CSV / Markdown / JSON / **STIX 2.1** (OASIS CTI).
 - **Egress:** `fetch-socks` over a Tor SOCKS5 daemon; native `fetch` for clear-web and breach APIs.
+- **MCP:** `@modelcontextprotocol/sdk` (Streamable HTTP) in `apps/research-mcp`.
 - **Market data:** `yahoo-finance2`.
 - **Tooling:** pnpm workspaces + Turborepo.
 - **Runtime:** Docker Compose, two networks (the cage).
@@ -382,7 +496,8 @@ Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root
 ## Roadmap
 
 - **✓ Intelligence Network — the compounding moat (shipped).** Procedural memory that learns *how* a signal is found and makes every new mission faster, cheaper, and more accurate; the membrane is the reward oracle and persistence is entity-stripped by construction. See [The Intelligence Network](#the-intelligence-network-signal-dna). Next: persist the corpus across restarts and expose it through the MCP server so the network compounds across every connected agent — a data network effect, not a proxy anyone can re-implement in a weekend.
-- **MCP server** — expose `altai.dispatch` / `altai.fetch_signal` as Model Context Protocol tools so any MCP-capable agent (Claude Desktop, Cursor, …) can call Altai natively.
+- **✓ Agent deliverables (shipped).** The brief is downloadable as Excel / CSV / Markdown / JSON / STIX 2.1, each provenance-stamped. See [Agent deliverables](#agent-deliverables-file-generation). Next: PDF and MISP, plus push-delivery to S3 / a SIEM.
+- **✓ MCP server (shipped).** `apps/research-mcp` exposes dispatch / status / fetch_signal as Model Context Protocol tools so any MCP-capable agent (Claude Desktop, Cursor, …) can call Altai natively. Next: add an `altai.memory` tool so connected agents share the learned network, and an `altai.export` tool for deliverables.
 - **On-prem / local inference** — run the agents on local open-weight models behind the gateway so the client's queries never leave the perimeter (SGX / confidential compute for attestation).
 - **Expanded sources** — Telegram channels, paste sites, additional breach providers, and pluggable OSINT connectors.
 - **Marketplace** — open the fleet to third-party specialized agent providers that bid on dispatched missions.
