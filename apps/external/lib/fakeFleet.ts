@@ -1,6 +1,7 @@
 import type { Mission, TraceEvent } from "@periscope/contracts";
 import { heroSignal } from "@periscope/fixtures";
-import { completeMission, emitTrace } from "./missionStore";
+import { emitTrace } from "./missionStore";
+import { membraneAndSeal } from "./seal";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -15,10 +16,6 @@ const SCRIPT: Step[] = [
   { layer: "execution", agent: "TorScout", level: "action", msg: "Tor circuit established; fetching .onion", meta: { exit_ip: "185.220.101.4", country: "DE", circuit: ["FR-guard", "DE-relay", "NL-exit"] } },
   { layer: "execution", agent: "BreachScout", level: "action", msg: "Cross-checking breach APIs (HIBP/IntelX)" },
   { layer: "execution", agent: "Planner", level: "success", msg: "Candidate signal synthesized from 2 independent sources" },
-  { layer: "membrane", agent: "Sanitizer", level: "success", msg: "PII/secret/malware stripped" },
-  { layer: "membrane", agent: "InjectionHunter", level: "success", msg: "No prompt-injection detected in payload" },
-  { layer: "membrane", agent: "Judge", level: "success", msg: "Consensus PASS — signing brief" },
-  { layer: "audit", agent: "AuditAgent", level: "success", msg: "Brief signed; audit ledger sealed" },
 ];
 
 export async function runFakeFleet(mission: Mission): Promise<void> {
@@ -26,5 +23,6 @@ export async function runFakeFleet(mission: Mission): Promise<void> {
     emitTrace({ mission_id: mission.id, ts: new Date().toISOString(), ...step });
     await sleep(600);
   }
-  completeMission(mission.id, heroSignal());
+  // Membrane + crypto attestation seal the mission (same path as the real fleet).
+  membraneAndSeal(mission, heroSignal(), []);
 }
