@@ -9,6 +9,19 @@ services:
     ports: ["3000:3000"]
     environment:
       INTERNAL_URL: "http://internal-app:3100"
+      USE_REAL_FLEET: "${USE_REAL_FLEET:-1}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL_STRONG: "${OPENAI_MODEL_STRONG:-}"
+      OPENAI_MODEL_FAST: "${OPENAI_MODEL_FAST:-}"
+      HIBP_API_KEY: "${HIBP_API_KEY:-}"
+      INTELX_API_KEY: "${INTELX_API_KEY:-}"
+      TOR_SOCKS_HOST: "tor"
+      TOR_SOCKS_PORT: "9050"
+    depends_on: [tor]
+
+  tor:
+    image: dperson/torproxy
+    networks: [external]           # tor needs the internet; SOCKS5 on :9050
 
   internal-app:
     build: { context: ., dockerfile: apps/internal/Dockerfile }

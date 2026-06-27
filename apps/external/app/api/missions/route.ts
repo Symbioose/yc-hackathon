@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { MissionSchema } from "@periscope/contracts";
 import { createMission } from "@/lib/missionStore";
-import { runFakeFleet } from "@/lib/fakeFleet";
+import { runFleet } from "@/lib/fleet";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -11,6 +11,6 @@ export async function POST(req: Request) {
   }
   const mission = parsed.data;
   createMission(mission.id);
-  void runFakeFleet(mission); // fire-and-forget; trace streams over /api/events
+  void runFleet(mission); // fire-and-forget; real swarm or fake fleet per USE_REAL_FLEET
   return Response.json({ id: mission.id });
 }
