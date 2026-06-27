@@ -1,14 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { AuditEntry, Signal, SourceContribution, TraceEvent } from "@altai/contracts";
+import type { AuditEntry, MemoryReport, RouteEdge, Signal, SourceContribution, TraceEvent } from "@altai/contracts";
 import type { MissionControlHandle } from "./components/MissionControl";
 
 const MissionControl = dynamic(() => import("./components/MissionControl"), { ssr: false });
 
 const LAYER_COLOR: Record<string, string> = {
   dispatch: "#36e0ff", policy: "#ffcf4d", identity: "#5dff9b",
-  execution: "#36e0ff", membrane: "#b78bff", audit: "#5dff9b",
+  execution: "#36e0ff", membrane: "#b78bff", audit: "#5dff9b", memory: "#ff6ad5",
 };
 
 interface AuditState {
@@ -78,12 +78,147 @@ const card: React.CSSProperties = {
   border: "1px solid var(--line)", background: "#0a1120", padding: 14,
 };
 
+// ===================== INTELLIGENCE NETWORK ("Signal DNA") =====================
+const SRC_LABEL: Record<string, string> = {
+  tor_forum: "TOR", breach_api: "BREACH", paste: "PASTE", press: "PRESS", filing: "FILING", START: "START",
+};
+const COLD_ORDER = ["press", "paste", "filing", "tor_forum", "breach_api"];
+
+const fmtMs = (ms: number) => (ms >= 1000 ? `${(ms / 1000).toFixed(ms % 1000 ? 1 : 0)}s` : `${ms}ms`);
+const fmtCost = (c: number) => `$${c.toFixed(2)}`;
+const fmtConf = (c: number) => c.toFixed(2);
+
+// one before→after row: cold (amber) → warmed (green) + delta chip
+function NetMetric({ label, cold, warmed, format, lowerBetter, pending }: {
+  label: string; cold: number; warmed: number; format: (n: number) => string; lowerBetter: boolean; pending: boolean;
+}) {
+  const improved = lowerBetter ? warmed < cold : warmed > cold;
+  const deltaPct = cold ? Math.round(((warmed - cold) / cold) * 100) : 0;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, padding: "3px 0" }}>
+      <span className="pixel" style={{ width: 58, color: "#5b6b8c", fontSize: 8 }}>{label}</span>
+      <span style={{ width: 52, textAlign: "right", color: "#ffcf4d" }}>{format(cold)}</span>
+      <span style={{ color: "#5b6b8c" }}>→</span>
+      {pending ? (
+        <span style={{ flex: 1, color: "#5b6b8c" }} className="blink">recall…</span>
+      ) : (
+        <>
+          <span key={warmed} className="pop" style={{ minWidth: 52, color: "#5dff9b", fontWeight: 700 }}>{format(warmed)}</span>
+          {deltaPct !== 0 && (
+            <span className="pixel" style={{
+              marginLeft: "auto", fontSize: 8, padding: "2px 5px",
+              color: improved ? "#5dff9b" : "#ff4d6d", border: `1px solid ${improved ? "#1f7a4d" : "#8a1f33"}`,
+            }}>{deltaPct > 0 ? "+" : ""}{deltaPct}%</span>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// the 5 source types; warmed route lit green, skipped ones struck through
+function RouteFlow({ route, cold }: { route: string[]; cold: boolean }) {
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center", marginTop: 4 }}>
+      {COLD_ORDER.map((s) => {
+        const on = cold ? true : route.includes(s);
+        return (
+          <span key={s} className="pixel" style={{
+            fontSize: 8, padding: "4px 6px",
+            color: cold ? "#ffcf4d" : on ? "#5dff9b" : "#445",
+            border: `1px solid ${cold ? "#8a6a14" : on ? "#1f7a4d" : "#1b2740"}`,
+            background: on && !cold ? "rgba(93,255,155,0.08)" : "transparent",
+            textDecoration: !cold && !on ? "line-through" : "none",
+            opacity: !cold && !on ? 0.5 : 1,
+          }}>{SRC_LABEL[s]}</span>
+        );
+      })}
+      <span style={{ marginLeft: "auto", fontSize: 9, color: cold ? "#ffcf4d" : "#5dff9b" }} className="pixel">
+        {cold ? "5 BLIND" : `${route.length} RECALLED`}
+      </span>
+    </div>
+  );
+}
+
+// the learned graph: top rewarded edges (the membrane is the reward oracle)
+function EdgeBars({ edges }: { edges: RouteEdge[] }) {
+  const top = edges.slice(0, 4);
+  const max = Math.max(0.01, ...top.map((e) => Math.abs(e.reward)));
+  return (
+    <div style={{ marginTop: 6 }}>
+      {top.map((e, i) => {
+        const pos = e.reward >= 0;
+        return (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, marginTop: 3 }}>
+            <span className="pixel" style={{ width: 104, color: "#9aa", fontSize: 7 }}>
+              {(SRC_LABEL[e.from] ?? e.from)}→{SRC_LABEL[e.to]}
+            </span>
+            <div style={{ flex: 1, height: 7, background: "#0a1120", border: "1px solid var(--line)" }}>
+              <div style={{ width: `${(Math.abs(e.reward) / max) * 100}%`, height: "100%", background: pos ? "#5dff9b" : "#ff4d6d" }} />
+            </div>
+            <span style={{ width: 60, textAlign: "right", color: "#5b6b8c" }}>{e.reward.toFixed(2)}·{e.visits}×</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function IntelNetwork({ report, onDemo }: { report: MemoryReport | null; onDemo: () => void }) {
+  const cold = !!report && report.recalled_from === 0; // demo cold phase / true cold start
+  return (
+    <div style={{ ...card, borderColor: report && !cold ? "#1f7a4d" : "var(--line)" }} className={report && !cold ? "net-learned" : undefined}>
+      {report ? (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <div className="pixel" style={{ fontSize: 12, color: cold ? "#ffcf4d" : "#5dff9b" }}>
+              {cold ? "RUN #1 · COLD" : `#1 → #${report.run_index}`}
+            </div>
+            <div style={{ fontSize: 9, color: "#5b6b8c" }}>{report.mission_type} · {report.sector}</div>
+          </div>
+          <div style={{ fontSize: 10, color: "#8a97b5", marginTop: 6 }}>
+            {cold
+              ? "no recalled route — exploring all sources blind"
+              : `procedural memory recalled the route from ${report.recalled_from} similar missions`}
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <NetMetric label="HOPS" cold={report.cold.hops} warmed={report.warmed.hops} format={(n) => `${n}`} lowerBetter pending={cold} />
+            <NetMetric label="LATENCY" cold={report.cold.latency_ms} warmed={report.warmed.latency_ms} format={fmtMs} lowerBetter pending={cold} />
+            <NetMetric label="COST" cold={report.cold.cost_usd} warmed={report.warmed.cost_usd} format={fmtCost} lowerBetter pending={cold} />
+            <NetMetric label="CONF" cold={report.cold.confidence} warmed={report.warmed.confidence} format={fmtConf} lowerBetter={false} pending={cold} />
+          </div>
+
+          <div className="pixel" style={{ marginTop: 12, fontSize: 8, color: "#5b6b8c" }}>LEARNED ROUTE</div>
+          <RouteFlow route={report.route} cold={cold} />
+
+          <div className="pixel" style={{ marginTop: 12, fontSize: 8, color: "#5b6b8c" }}>REWARDED EDGES · MEMBRANE = ORACLE</div>
+          <EdgeBars edges={report.edges} />
+        </>
+      ) : (
+        <div style={{ color: "#5b6b8c", fontSize: 12 }} className="blink">network warming up…</div>
+      )}
+      <button
+        onClick={onDemo}
+        className="pixel"
+        style={{
+          marginTop: 12, width: "100%", fontSize: 9, padding: "10px 12px", cursor: "pointer",
+          border: "1px solid #1f7a4d", background: "rgba(93,255,155,0.06)", color: "#5dff9b",
+        }}
+      >
+        ▶ RUN INTELLIGENCE DEMO · COLD → WARMED
+      </button>
+    </div>
+  );
+}
+
 export default function OpsCenter() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [signal, setSignal] = useState<Signal | null>(null);
   const [missionId, setMissionId] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditState | null>(null);
   const [prices, setPrices] = useState<PricePoint[]>([]);
+  const [memory, setMemory] = useState<MemoryReport | null>(null);
   const [muted, setMuted] = useState(false);
   const mc = useRef<MissionControlHandle>(null);
   const logRef = useRef<HTMLDivElement>(null);
@@ -96,8 +231,22 @@ export default function OpsCenter() {
       setSignal(d.signal);
       setMissionId(d.id);
     });
+    es.addEventListener("memory", (e) => setMemory(JSON.parse((e as MessageEvent).data)));
     return () => es.close();
   }, []);
+
+  // resting snapshot so the network panel is populated on first load
+  useEffect(() => {
+    fetch("/api/memory")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.report && setMemory((m) => m ?? d.report))
+      .catch(() => {});
+  }, []);
+
+  async function runDemo() {
+    mc.current?.unlockAudio();
+    await fetch("/api/demo", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {});
+  }
 
   // reset panels when a fresh mission is dispatched
   useEffect(() => {
@@ -204,7 +353,10 @@ export default function OpsCenter() {
 
       {/* ===================== RIGHT: sober proof panels ===================== */}
       <aside style={{ overflowY: "auto", padding: 18, background: "#070b14" }}>
-        <h2 className="pixel" style={sectionTitle}>SIGNAL</h2>
+        <h2 className="pixel" style={{ ...sectionTitle, color: "#5dff9b" }}>INTELLIGENCE NETWORK</h2>
+        <IntelNetwork report={memory} onDemo={runDemo} />
+
+        <h2 className="pixel" style={{ ...sectionTitle, marginTop: 22 }}>SIGNAL</h2>
         {signal ? (
           <div style={card}>
             <div className="pixel" style={{ fontSize: 13, color: "#36e0ff" }}>

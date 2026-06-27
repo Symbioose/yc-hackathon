@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { AuditEntry, Signal, SignedBrief, TraceEvent } from "@altai/contracts";
+import type { AuditEntry, MemoryReport, Signal, SignedBrief, TraceEvent } from "@altai/contracts";
 import { tamperEntry } from "@altai/crypto";
 
 interface MissionState {
@@ -18,6 +18,8 @@ declare global {
   var __altaiMissions: Map<string, MissionState> | undefined;
   // eslint-disable-next-line no-var
   var __altaiBus: EventEmitter | undefined;
+  // eslint-disable-next-line no-var
+  var __altaiLastMemory: MemoryReport | undefined;
 }
 
 const missions: Map<string, MissionState> =
@@ -36,6 +38,17 @@ export function createMission(id: string): MissionState {
 export function emitTrace(ev: TraceEvent): void {
   missions.get(ev.mission_id)?.events.push(ev);
   bus.emit("trace", ev);
+}
+
+/** Publish an Intelligence Network snapshot (before/after + learned graph) to the
+ * ops-center. Cached so a client that connects mid-demo still gets the latest state. */
+export function emitMemory(report: MemoryReport): void {
+  globalThis.__altaiLastMemory = report;
+  bus.emit("memory", report);
+}
+
+export function getLastMemoryReport(): MemoryReport | undefined {
+  return globalThis.__altaiLastMemory;
 }
 
 export function getEvents(id: string): TraceEvent[] {

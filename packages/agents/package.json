@@ -9,6 +9,7 @@
   "dependencies": {
     "@altai/contracts": "workspace:*",
     "@altai/fixtures": "workspace:*",
+    "@altai/memory": "workspace:*",
     "@altai/tools": "workspace:*",
     "ai": "^5.0.0",
     "@ai-sdk/openai": "^2.0.0",

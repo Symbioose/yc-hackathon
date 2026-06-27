@@ -15,6 +15,7 @@ Altai closes that gap. A sealed internal agent **dispatches a mission** through 
 - [Why Altai](#why-altai)
 - [Architecture](#architecture)
 - [How it works (the six layers)](#how-it-works-the-six-layers)
+- [The Intelligence Network (Signal DNA)](#the-intelligence-network-signal-dna)
 - [Project structure](#project-structure)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
@@ -131,6 +132,39 @@ Every mission crosses six layers; every action is recorded into the audit ledger
 
 ---
 
+## The Intelligence Network (Signal DNA)
+
+Every sealed mission also makes the **next** one faster, cheaper, and more accurate. The Intelligence Network is **procedural memory** — not a knowledge graph of *facts* (what is true) but a learned navigation graph (*how* information is found). Where a fact store memorizes destinations, Altai records **routes**: which source types corroborate which kinds of mission, in what order, at what cost and latency.
+
+This is the compounding moat, and it is **shipped** — it runs on every dispatch and has a one-click before/after demo in the ops-center.
+
+### How it learns
+
+1. **Fingerprint → Genome.** When a mission seals, it is compressed into an *entity-stripped* `Genome`: `mission_type`, `sector`, the `source_sequence` walked, the `source_types` that corroborated, plus hops / latency / cost / confidence / outcome. There is, by construction, **no field for the raw query, entity, ticker, URL, or source name** — identity isolation applied to memory. Two missions about different companies in the same sector produce near-identical genomes.
+2. **Retrieve.** A new mission is matched against the corpus by **cosine** over a deterministic feature vector to recall the missions most like it (the network ships pre-trained on ~20 past genomes).
+3. **Route graph + reward.** Recalled genomes form a `source_type → source_type` graph with reward stats (success rate, avg confidence, cost, latency). The **reward oracle is the membrane**: a route is reinforced *only* when its signal was corroborated (noisy-OR), passed the Judge, and was Ed25519-signed; routes that lead into quarantine or dead-ends are down-weighted. The reward signal is therefore free and trustworthy — you can't fake a signed, corroborated brief.
+4. **Warm-start.** The Planner takes the best recalled route as a prior to **select and order the scouts** (e.g. *“Recalled route from 13 similar missions → query Tor→Breach first”*), so a warmed mission touches fewer sources than a cold one. Emitted as a new `memory` trace layer (backward-compatible).
+
+> *Privacy by construction.* What persists is abstracted structure (plan shapes, source reliabilities, link patterns) — never the raw target or query — so the network cannot reconstruct who asked what.
+
+### The transformation (deterministic demo)
+
+The ops-center has a **▶ RUN INTELLIGENCE DEMO** button that replays the *same* mission cold then warmed — no LLM required, fully deterministic — and animates the before/after live:
+
+| Run | Hops | Latency | Cost | Confidence |
+|---|---|---|---|---|
+| **#1 — cold** (network blind, explores all 5 sources) | 7 | 38 s | $0.41 | 0.72 |
+| **#14 — warmed** (recalled Tor→Breach from 13 similar) | **2** | **6 s** | **$0.04** | **0.94** |
+
+≈ **−71 % hops · −84 % latency · −90 % cost · +31 % confidence** — and the counter compounds (#14 → #15 → …) because each signed mission teaches the graph. The panel also renders the learned route lighting up and the top rewarded edges of the discovery graph.
+
+```bash
+# headline before/after, straight from the engine (deterministic):
+curl -s localhost:3000/api/memory | jq '.report | {cold, warmed, route, recalled_from, run_index}'
+```
+
+---
+
 ## Project structure
 
 A pnpm + Turborepo monorepo. TypeScript end to end, with a single shared contract package every other package codes against.
@@ -139,16 +173,17 @@ A pnpm + Turborepo monorepo. TypeScript end to end, with a single shared contrac
 altai/
 ├── apps/
 │   ├── external/            Gateway + agent fleet + membrane + ops-center UI (port 3000)
-│   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · prices · health
-│   │   ├── app/page.tsx     Ops-center: live trace, signal card, stock overlay, audit ledger
+│   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · memory · demo · prices · health
+│   │   ├── app/page.tsx     Ops-center: live trace, intelligence-network panel, signal card, stock overlay, audit ledger
 │   │   └── lib/             gateway orchestration, mission store, real/fake fleet, membrane+seal
 │   └── internal/            Sealed enterprise app (served under /bank, port 3100)
 │       ├── app/page.tsx     Sealed chat: dispatch → await signed brief → verify signature
 │       └── app/api/         dispatch · signal (proxies to the gateway, its only egress)
 ├── packages/
-│   ├── contracts/           Zod schemas: Mission · Signal · AlphaCard · AuditEntry · SignedBrief · TraceEvent
-│   ├── agents/              AI-SDK swarm (Planner, Scouts) + membrane (Sanitizer, Injection Hunter)
+│   ├── contracts/           Zod schemas: Mission · Signal · AlphaCard · AuditEntry · SignedBrief · TraceEvent · MemoryReport
+│   ├── agents/              AI-SDK swarm (Planner + memory warm-start, Scouts) + membrane (Sanitizer, Injection Hunter)
 │   ├── crypto/              Ed25519 sign/verify + Merkle ledger + tamper helper
+│   ├── memory/              Intelligence Network: fingerprint → Genome · cosine retrieve · route graph + reward · seed corpus
 │   ├── tools/               web fetch · Tor SOCKS5 fetch · Ahmia · HIBP/IntelX
 │   └── fixtures/            verified case data + price puller + confidence fusion / AlphaCard
 ├── docker-compose.yml       two networks (internal=true, external) — the cage
@@ -244,10 +279,12 @@ The gateway (`apps/external`) exposes the egress and observability surface.
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/api/missions` | Dispatch a mission. Body: a `Mission`. Returns `{ id }`. |
-| `GET` | `/api/events` | Server-Sent Events firehose of `TraceEvent`s and the final `signal`. |
+| `GET` | `/api/events` | Server-Sent Events firehose of `TraceEvent`s, the final `signal`, and `memory` snapshots. |
 | `GET` | `/api/missions/:id/signal` | The `SignedBrief` once ready (`202` while in progress). |
 | `GET` | `/api/missions/:id/audit` | Audit ledger + `signature_valid` + `ledger_ok`. |
 | `POST` | `/api/missions/:id/tamper` | Demo control: mutate one ledger entry to show tamper-evidence. |
+| `GET` | `/api/memory` | Intelligence Network snapshot: the before/after `MemoryReport` + learned graph. |
+| `POST` | `/api/demo` | Run the deterministic Intelligence Network demo (same mission, cold → warmed). |
 | `GET` | `/api/prices/:ticker` | Daily close series for the overlay chart (market data, outside the signed payload). |
 | `GET` | `/api/health` | Liveness probe. |
 
@@ -287,6 +324,21 @@ SignedBrief       // what crosses back to the sealed agent
 
 TraceEvent        // streamed over SSE; drives the ops-center
 { mission_id, ts, layer, agent, level, msg, meta? }
+// layer ∈ dispatch · policy · identity · execution · membrane · audit · memory
+
+// --- Intelligence Network (Signal DNA) ---
+Genome            // entity-stripped DNA of a finished mission — never the query/entity
+{ mission_type, sector, source_sequence[], corroborating_types[],
+  hops, latency_ms, cost_usd, confidence, outcome: "signed"|"quarantine"|"dead_end" }
+
+MemoryRecall      // warm-start prior handed to the Planner
+{ recalled, route[], recalled_from, reason }
+
+RouteEdge         // one learned edge of the discovery graph
+{ from, to, visits, success_rate, avg_confidence, avg_cost_usd, avg_latency_ms, reward }
+
+MemoryReport      // the before/after the ops-center renders
+{ mission_type, sector, recalled_from, run_index, route[], cold, warmed, edges[] }
 ```
 
 ---
@@ -309,7 +361,7 @@ pnpm test        # all packages
 pnpm typecheck   # all packages
 ```
 
-Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection), the tools (web/breach), the agents (planner synthesis, membrane injection detection), and the fixtures (confidence fusion and AlphaCard computation).
+Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection), the tools (web/breach), the agents (planner synthesis, membrane injection detection), the fixtures (confidence fusion and AlphaCard computation), and the Intelligence Network (fingerprint privacy/entity-stripping, cosine retrieval, the membrane-as-oracle reward model, and the locked cold→warmed before/after).
 
 ---
 
@@ -329,8 +381,7 @@ Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root
 
 ## Roadmap
 
-- **Intelligence Network — the compounding moat.** Not a knowledge graph of *facts* (what is true) but a learned navigation network (*how* information is found). Where a fact store memorizes destinations, Altai records **routes**: which source types yield corroborated signals for which mission types, in what order, at what cost and latency — a weighted graph of discovery that every mission walks and updates. A new mission is matched against similar past ones to retrieve the search trajectory that worked, so each investigation is faster, cheaper, and more accurate than the last. This is *procedural* memory — how to search — not a fact dump that goes stale. The reward signal is free and trustworthy because **the membrane is the oracle**: a path is reinforced only when its signal is corroborated by independent sources (noisy-OR), passes the Judge, and is signed; paths that lead into quarantine, poison, or dead ends are down-weighted. Exposed through the MCP server below, the network compounds across every connected agent — a data network effect, not a proxy anyone can re-implement in a weekend.
-  - *Privacy by construction.* What persists is abstracted, entity-stripped structure (source reliability, plan shapes, link patterns) — never the raw target or query — so the network cannot reconstruct who asked what. The egress's identity-isolation guarantee, applied to memory.
+- **✓ Intelligence Network — the compounding moat (shipped).** Procedural memory that learns *how* a signal is found and makes every new mission faster, cheaper, and more accurate; the membrane is the reward oracle and persistence is entity-stripped by construction. See [The Intelligence Network](#the-intelligence-network-signal-dna). Next: persist the corpus across restarts and expose it through the MCP server so the network compounds across every connected agent — a data network effect, not a proxy anyone can re-implement in a weekend.
 - **MCP server** — expose `altai.dispatch` / `altai.fetch_signal` as Model Context Protocol tools so any MCP-capable agent (Claude Desktop, Cursor, …) can call Altai natively.
 - **On-prem / local inference** — run the agents on local open-weight models behind the gateway so the client's queries never leave the perimeter (SGX / confidential compute for attestation).
 - **Expanded sources** — Telegram channels, paste sites, additional breach providers, and pluggable OSINT connectors.
