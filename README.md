@@ -1,244 +1,324 @@
-# Altai — The Sovereign External-Action Layer for Air-Gapped Enterprise Agents
+# Altai
 
-> **Paris Builds hackathon** (Unaite × YC) · 27–28 June 2026 · 36h · Prize: €20k + YC interview + a day at QRT
-> **Track:** Software for Agents
-> **Goal:** WIN. A demo that silences the room + a warm paying buyer + QRT-grade technical depth.
+**The sovereign external-action layer for air-gapped enterprise AI agents.**
 
-> 🔭 *Altai* — like a watchtower on high ground: your sealed agents see across the whole valley while never leaving their own peak.
+Enterprises are deploying internal AI agents behind a hard rule from their CISO/DSI: **no outbound network access**. The agent runtime is air-gapped — no web, no third-party APIs, no Tor. This is the correct security posture, and it creates a real problem: the firm wants external intelligence, but forbids its own agents from reaching out to get it.
 
----
+Altai closes that gap. A sealed internal agent **dispatches a mission** through a single audited egress. An isolated fleet of specialized external agents acts on the outside world — the open web, firewall-blocked sites, breach APIs, and Tor — a multi-agent **security membrane** verifies and cryptographically signs everything that crosses back, and the firm receives a **sanitized, sourced, signed intelligence brief**. The firm's identity and queries never touch the wire.
 
-## 🧩 One-liner
-
-**Altai is the compliant window to the outside world for enterprise AI agents.**
-Your internal agents are sealed off from the internet by your CISO/DSI. Altai lets them dispatch missions to a fleet of specialized, isolated external agents (a web-research agent, a Tor/dark-web agent, …) that act on everything your firewall blocks — the open web, blocked sites, closed sources and Tor — and return a **sanitized, audited, sourced intelligence brief**, without ever exposing your identity or your queries.
-
-> Recorded Future sells you a static feed for humans. **Altai gives your sealed agents eyes on the outside world — they dispatch a mission, an isolated fleet acts on the forbidden outside, and you get a provenance-stamped, tradeable signal back — and your firm never touches the wire.**
+> Like a watchtower on high ground: your agents see across the whole valley while never leaving their own peak.
 
 ---
 
-## 🔥 Validation
+## Table of contents
 
-**QRT — the hackathon's biggest sponsor and a judge — told us directly that they have many blocked sites and would love to research them securely.** The buyer in the room verbalized the exact pain. We also have a **trader (warm, already willing to pay)** for the alt-data alpha use case.
-
----
-
-## 🎯 The problem
-
-Enterprises are racing to deploy internal AI agents — but the CISO/DSI imposes a hard rule (especially in finance, FR & US):
-- **No outbound. The agent runtime is air-gapped.** No web, no third-party APIs, no Tor.
-- The firm wants **external intelligence** but **forbids its own agents from reaching out**.
-
-Today the only options are a static vendor feed (generic, slow, not agent-native), a slow human, or breaking the security posture. **There is no agent-native, compliant, audited egress layer.**
-
----
-
-## 💡 The solution (what we build)
-
-Altai = a controlled egress gateway + an isolated, specialized external agent fleet.
-
-1. **Dispatch (the only hole in the wall)** → the internal agent calls Altai via an **MCP server / SDK**: `altai.dispatch(mission)`. Single, audited, policy-enforced egress point.
-2. **Broker + policy** → enforce allowed sources/scope/spend, log **every action** for compliance/audit, guarantee the client's identity & raw queries are **never** exposed.
-3. **Specialized external fleet** → isolated workers with their own identities/egress: a **web-research agent** (open + blocked sites), a **Tor/dark-web agent** (Ahmia/IntelX + a real Tor SOCKS fetch), a **data-API agent** (HIBP/Dehashed/IntelX).
-4. **Signal extraction** → unstructured findings → `{entity/ticker, event_type, confidence, source, timestamp}`.
-5. **Sanitized return** → only the clean, classified brief + audit trail crosses the wall. No raw dark-web payloads enter the firm.
-6. **Backtest / lead-time** → overlay signal timestamp vs price action → quantify the alpha ("known N days before public disclosure").
+- [Why Altai](#why-altai)
+- [Architecture](#architecture)
+- [How it works (the six layers)](#how-it-works-the-six-layers)
+- [Project structure](#project-structure)
+- [Getting started](#getting-started)
+- [Configuration](#configuration)
+- [Running the system](#running-the-system)
+- [API reference](#api-reference)
+- [Data contracts](#data-contracts)
+- [Security model](#security-model)
+- [Testing](#testing)
+- [Tech stack](#tech-stack)
+- [Roadmap](#roadmap)
 
 ---
 
-## 🏗️ Architecture — the layers (this is the moat, not the proxy)
+## Why Altai
 
-Every mission crosses **6 layers**, and every action is logged. This is what makes Altai *not* "a VM with Tor".
+| Problem | Today | With Altai |
+|---|---|---|
+| Internal agents are air-gapped by policy | They simply can't answer questions about the outside world | They dispatch a mission to a governed egress and get a structured answer back |
+| External intelligence is needed (breaches, leaks, alt-data) | Static vendor feeds for humans, or a slow analyst | An agent-native, on-demand fleet returns a tradeable, sourced signal |
+| Reaching closed/dark sources is risky and non-compliant | Breaks the security posture, or doesn't happen | Identity-isolated egress, defensive/read-only, every action audited |
+| "How do we trust what comes back?" | No provenance, no guarantees | Ed25519-signed brief over a tamper-evident Merkle audit ledger |
+
+Altai is **not a proxy or a VPN**. The value is the governance and verification around the egress: a policy engine, identity isolation, an adversarial inbound membrane, and cryptographic attestation. The proxy is the boring part; the moat is everything around it.
+
+### Example use case
+
+A desk wants to know whether a public company has been compromised *before the market does*. The internal (sealed) agent dispatches the question. Altai's fleet finds the leak on a dark-web forum, cross-checks breach APIs, fuses the sources into a confidence score, and returns a signal stamped with **when Altai would have known vs. when the company disclosed publicly** — plus the implied short return over that window. Every step is in the signed audit log.
+
+---
+
+## Architecture
+
+Two Docker networks enforce the air-gap at the network layer. The sealed side has **no route to the internet**; its only reachable host is the Altai gateway. The gateway is the single bridge between the sealed network and the outside world.
 
 ```
-  SEALED ENTERPRISE                        ALTAI                                 OUTSIDE WORLD
- ┌──────────────────┐   dispatch()   ┌──────────────────────────────────────┐   ┌──────────────────┐
- │  internal agent  │ ─────────────► │ 1. Dispatch (MCP)                    │   │  open web        │
- │  (NO INTERNET)   │                │ 2. Policy & governance               │   │  blocked sites   │
- │                  │                │ 3. Identity isolation                │ ► │  Tor / .onion    │
- │  ◄───────────────│ ◄───────────── │ 4. Execution (agent fleet)           │   │  breach APIs     │
- │  sourced brief   │  signal+audit  │ 5. Sanitization & classification     │   │  Telegram        │
- └──────────────────┘                │ 6. Audit & attestation               │   └──────────────────┘
-                                      └──────────────────────────────────────┘
+            SEALED NETWORK  (docker network: internal, internal=true — NO internet)
+          ┌───────────────────────────────────────────────────────────────────────┐
+          │   apps/internal  (Next.js, served under /bank)                          │
+          │   ┌─────────────────────────────────────────────┐                       │
+          │   │  Sealed agent                                │                       │
+          │   │  • holds NO api keys                         │                       │
+          │   │  • fetch_url()  → fails (no route out)       │                       │
+          │   │  • dispatch()   → only egress that works ────┼──┐                    │
+          │   └─────────────────────────────────────────────┘  │                    │
+          └────────────────────────────────────────────────────┼────────────────────┘
+                                                                 │ the only hole in the wall
+                                                                 ▼
+            ALTAI GATEWAY  (docker network: internal + external — the single bridge)
+          ┌───────────────────────────────────────────────────────────────────────┐
+          │   apps/external  (Next.js: gateway + fleet + membrane + ops-center UI)   │
+          │                                                                         │
+          │   1. DISPATCH        receive mission (validated against the contract)    │
+          │   2. POLICY          allow/deny sources, scope, spend — reject early     │
+          │   3. IDENTITY        strip client identity; act under Altai egress       │
+          │   4. EXECUTION  ───────────────────────────────────────────────┐        │
+          │        Planner → Web Scout · Tor Scout · Breach Scout           │        │
+          │   5. MEMBRANE   Sanitizer · Injection Hunter · Judge            │        │
+          │   6. AUDIT      Merkle ledger + Ed25519 signature → SignedBrief │        │
+          │                                                                 │        │
+          │   SignedBrief ◄── sanitized, signed, provenance-stamped ◄───────┘        │
+          └───────────────────────────────┬─────────────────────────────────────────┘
+                                           │
+                                           ▼
+            OUTSIDE WORLD  (docker network: external — internet + Tor)
+          ┌───────────────────────────────────────────────────────────────────────┐
+          │   open web · firewall-blocked sites · breach APIs (HIBP/IntelX)         │
+          │   Tor daemon (SOCKS5 :9050) → .onion / dark-web sources                 │
+          └───────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Dispatch layer (MCP)** — the sealed agent's *only* egress. Tools: `dispatch`, `status`, `fetch_signal`. Nothing else in the runtime touches the outside.
-2. **Policy & governance layer** — per-tenant rules: source allow/deny-list, scope, data classes, spend caps, rate limits. Out-of-policy missions are rejected *before* execution.
-3. **Identity isolation layer** — the client's identity, IP and raw query **never leave Altai**. External agents act under Altai's own rotating identities/egress. The firm is never on the wire.
-4. **Execution layer** — the specialized, isolated agent fleet (below).
-5. **Sanitization & classification layer** — raw external payloads never enter the firm; results are extracted, PII/secret/malware-stripped, classified, returned as a structured brief.
-6. **Audit & attestation layer** — every action (which agent, which source, when, what was fetched) is immutably logged; exportable compliance report; *(roadmap)* cryptographic attestation via confidential compute (SGX).
+Two consequences fall out of the topology, and both are demonstrable:
 
-### 🛡️ Compliance agents (they enforce — this is why it's not a proxy)
-
-| Agent | Role |
-|---|---|
-| **Policy Agent** | Validates every mission against the tenant's policy *before* anything runs |
-| **Guardrail Agent** | Enforces **defensive / OSINT read-only** — blocks any attempt to transact, purchase or interact |
-| **Sanitization Agent** | Strips PII, secrets, malware and raw illicit content from results before they cross the wall |
-| **Audit Agent** | Records & signs every action into the immutable audit log; generates the compliance report |
-
-### 🔭 Research agents (the fleet that acts on the outside)
-
-| Agent | Role |
-|---|---|
-| **Web-research agent** | Open web + firewall-blocked sites (foreign press, sector forums, restricted sources) |
-| **Tor / dark-web agent** | Ahmia/IntelX discovery + a **real live Tor SOCKS fetch** of `.onion` |
-| **Data-API agent** | Breach data via HIBP / Dehashed / IntelX; optional Telegram (Telethon) |
-| **Signal agent** | Findings → structured `{entity, event, confidence, source, timestamp}` + backtest / lead-time |
-
-> **The one-line moat:** "We don't give your agent the internet. We give it a *governed, audited, identity-isolated* delegate that brings back a decision — and proves the firm never touched the wire."
+- The sealed container genuinely cannot reach the internet (`curl https://google.com` times out). Its only reachable host is the gateway.
+- The Anthropic/OpenAI API key lives **only** on the gateway. The sealed environment holds no credentials and has no wire access.
 
 ---
 
-## 🎬 The demo (60–90s) — engineered for the *wow*
+## How it works (the six layers)
 
-> **Rule of wow:** make the room *feel the cage* before they see the escape. Everything converges on **beat 4**.
-> **Rule of safety:** live = proof, cached = the hero signal. Pre-warm Tor circuits. Backup video ready.
+Every mission crosses six layers; every action is recorded into the audit ledger.
 
-Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Altai fleet in the wild.
+1. **Dispatch** — the sealed agent's only egress. The mission is parsed and validated against the shared `Mission` contract.
+2. **Policy** — per-tenant governance: source allow/deny-list, scope (`osint_readonly`), data classes, spend caps. Out-of-policy missions are rejected before any execution.
+3. **Identity isolation** — the client's identity, IP, and raw query never leave the gateway. The fleet acts under Altai's own egress.
+4. **Execution** — a `Planner` decomposes the mission and runs specialized scouts in parallel:
+   - **Web Scout** — open web + firewall-blocked sites.
+   - **Tor Scout** — Ahmia discovery + a live `.onion` fetch over SOCKS5, reporting the real Tor exit IP and country.
+   - **Breach Scout** — HIBP / IntelX breach corroboration.
+5. **Membrane** — an adversarial inbound panel. Nothing crosses back until it passes:
+   - **Sanitizer** — strips PII, secrets, and malware from anything returned.
+   - **Injection Hunter** — scans fetched dark-web/web content for prompt-injection and identity-exfil attempts; quarantines on hit.
+   - **Judge** — requires a clean pass, then signs the brief.
+6. **Audit & attestation** — every action is hash-chained into a Merkle ledger; the Judge signs `canonical(signal) + merkleRoot` with Ed25519. The sealed side independently verifies the signature against the embedded public key. Tampering with any audit entry breaks the recomputed root while the signature stays valid — i.e. tampering is mathematically detectable.
 
-1. **Prove the cage is real (tension)** → ask the sealed agent *"is issuer **X** compromised?"* → it **fails live**: `BLOCKED: egress denied by policy`, a `ping` that times out. *(Theatre: a real laptop in airplane mode / ethernet unplugged on the table = "this is the bank".)*
-2. **Dispatch → the fleet ignites (energy)** → on `dispatch`, the right pane explodes: specialized agents spawn, real-time logs stream, web-agent + Tor-agent fan out in parallel.
-3. **Prove it's really the dark web (credibility)** → fetch a real `.onion` **live**; show **your IP before (FR) vs via Tor (foreign exit node)** + the Tor circuit (3 relays). Nobody can call it fake.
-4. **THE HERO MOMENT — the signal lands on a REAL case (silence)** → fleet returns *"X: credential dump, posted [real date], forum [real], confidence 0.86."* Then overlay on the **real stock chart**: animate two vertical lines → *"This is when WE'd have known. This is when the market knew. **Twelve days.**"* The gap = the alpha; the stock craters −X%.
-5. **"Oh, it's bigger" (the turn)** → take a **live ticker from the room/judge** and run the mission for real. Proves it's not scripted. *(Fallback: a pre-loaded case + the backup video.)*
-6. **Compliance close (scary → moat)** → open the **audit log**: every action scoped & timestamped → *"and the firm's identity never touched the wire. Proof, right here."*
-
-> Killer line: *"Your agents are blind by design. Altai gives them eyes — and your firm never touches the wire."*
-
-### ☠️ Wow-killers to ban
-- Latency (pre-warm Tor, pre-fetch the hero signal — never a 30s spinner live)
-- Walls of JSON (narrate the story, not the schema)
-- Narrating features instead of showing the cage → escape → gap → audit
-- A fake "Acme Corp" ticker — **real breach, real ticker, real price move only**
+**Signal intelligence.** Findings are fused into a single confidence via **noisy-OR** over independent sources, and (for finance use cases) wrapped in an **AlphaCard**: lead-time vs. public disclosure and the implied return of shorting the window, computed from the real price series.
 
 ---
 
-## 🏆 Why it wins
+## Project structure
 
-- **Agent infra that's simple to tell + technically impressive** → "the egress layer for sealed enterprise agents." One sentence, deep build. MCP-native.
-- **Impossible transformation, real data** → a sealed agent → real signal on a real breach → quantified lead-time on a real stock move.
-- **Sponsor validated the pain** → QRT told us they need exactly this.
-- **Decision, not a dashboard** → the mission returns a tradeable, provenance-stamped signal.
-- **Compliance is the moat** → defensive/OSINT, fully audited, identity-isolated. The scary part becomes the differentiator.
+A pnpm + Turborepo monorepo. TypeScript end to end, with a single shared contract package every other package codes against.
 
----
-
-## 🛠️ Tech stack
-
-| Layer | Choice |
-|---|---|
-| Monorepo | **pnpm workspace + Turborepo**, **TypeScript** everywhere |
-| Sealed side | **Next.js** sealed chat (`apps/internal`) — dispatch-only egress; runs on a Docker `internal:true` network (genuinely no internet) |
-| Gateway / broker | **Next.js (App Router)** route handlers (`apps/external`) — mission ingress, SSE trace stream, 6-layer orchestration; bridges both networks |
-| Agent fleet | **Vercel AI SDK v5 + OpenAI** (`@altai/agents`): Planner + Web / Tor / Breach scouts (real tool-calling) |
-| Tools | `@altai/tools`: web fetch, **Tor** SOCKS5 (`fetch-socks` → `tor` daemon `:9050`), Ahmia (`.onion` index), HIBP / IntelX |
-| Contract | **Zod** shared package (`@altai/contracts`): Mission · TraceEvent · Signal · AuditEntry · SignedBrief |
-| Signal | multi-source confidence fusion (noisy-OR) + quant **AlphaCard**; deterministic hero pinning for the demo |
-| Backtest | `yahoo-finance2` → price series + lead-time |
-| Frontend | React (Next): ops-center (live trace · signal card · **stock-overlay chart + AlphaCard + confidence-fusion bars** · audit log + tamper-demo) + sealed chat, served on one origin (`/` and `/bank`) |
-| Runtime | **Docker Compose**, 2 networks — `internal:true` (sealed) + `external` (internet + Tor) = the real cage |
-| Provider | **OpenAI** via `@ai-sdk/openai` (provider-agnostic — one-import swap back to Claude). Roadmap: on-prem / local models / SGX |
-
----
-
-## 👥 Team & ownership
-
-| Person | Owns |
-|---|---|
-| **Louis** (CS/Math) | Gateway + external fleet + signal extraction/scoring + backtest math |
-| **Dung** (CS) | Collection pipeline (OSINT/Tor/APIs) + backend + data sources |
-| **Emile** (AI/agents/demo) | MCP `dispatch` + sealed agent + split-screen demo + pitch storyline |
-| **Malena** (Finance/M&A) | Trader/QRT design partner + alpha/ROI + compliance narrative |
-| **Gibril** (hard science) | Isolation/confidential-compute architecture + reliability + audit-log export |
-
-> Assign owners from minute one. Don't let two people touch the same file in parallel.
+```
+altai/
+├── apps/
+│   ├── external/            Gateway + agent fleet + membrane + ops-center UI (port 3000)
+│   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · prices · health
+│   │   ├── app/page.tsx     Ops-center: live trace, signal card, stock overlay, audit ledger
+│   │   └── lib/             gateway orchestration, mission store, real/fake fleet, membrane+seal
+│   └── internal/            Sealed enterprise app (served under /bank, port 3100)
+│       ├── app/page.tsx     Sealed chat: dispatch → await signed brief → verify signature
+│       └── app/api/         dispatch · signal (proxies to the gateway, its only egress)
+├── packages/
+│   ├── contracts/           Zod schemas: Mission · Signal · AlphaCard · AuditEntry · SignedBrief · TraceEvent
+│   ├── agents/              AI-SDK swarm (Planner, Scouts) + membrane (Sanitizer, Injection Hunter)
+│   ├── crypto/              Ed25519 sign/verify + Merkle ledger + tamper helper
+│   ├── tools/               web fetch · Tor SOCKS5 fetch · Ahmia · HIBP/IntelX
+│   └── fixtures/            verified case data + price puller + confidence fusion / AlphaCard
+├── docker-compose.yml       two networks (internal=true, external) — the cage
+├── turbo.json               build/dev/test/typecheck pipeline
+└── docs/superpowers/        architecture spec + phase plans
+```
 
 ---
 
-## 📅 36-hour plan
+## Getting started
 
-- **H0–4** — lock the demo company X (a real breach that leaked before disclosure) + live sources + demo script + ownership
-- **H4–14** — core: MCP `dispatch` from a sealed agent → gateway → **compliance layers** (Policy + Guardrail + identity isolation) → research fleet (OSINT + Tor SOCKS fetch)
-- **H14–24** — Sanitization + Audit agents (immutable log) + signal extraction + backtest overlay + split-screen UI (cage → fleet → gap → audit)
-- **H24–32** — rehearse the 6-beat demo + airplane-mode theatre + backup video + pitch deck + lock QRT/trader design partner & exact paid mission
-- **H32–36** — 2–3 clean demo runs + audit-log/compliance-report export + polish + submit
+### Prerequisites
 
----
+- **Node.js 22+**
+- **pnpm 10+** (`corepack enable`)
+- **Docker + Docker Compose** (for the full air-gapped topology)
 
-## 🚀 Getting started
+### Install
 
 ```bash
 git clone https://github.com/Symbioose/yc-hackathon.git
 cd yc-hackathon
 pnpm install
-
-# run the full demo (sealed cage + gateway + fleet + Tor) under Docker
-docker compose up --build
-#   → http://localhost:3000        ops-center (live trace + signal card)
-#   → http://localhost:3000/bank   sealed bank chat (ask → dispatch → brief)
 ```
 
-**Prove the cage is real:**
+---
+
+## Configuration
+
+Copy `.env.example` to `.env` and fill in what you need. Out of the box, with no keys, the fleet runs a deterministic mocked fallback so the system is fully functional offline.
+
+| Variable | Required | Description |
+|---|---|---|
+| `OPENAI_API_KEY` | for real swarm | Enables the live LLM agent swarm. Without it, the mocked fallback runs. |
+| `OPENAI_MODEL_STRONG` | for real swarm | Model id for the Planner and the membrane Judge. |
+| `OPENAI_MODEL_FAST` | for real swarm | Model id for the scouts and verifiers. |
+| `OPENAI_BASE_URL` | optional | Override the LLM endpoint (e.g. an on-prem inference proxy). |
+| `HIBP_API_KEY` | optional | Live Have I Been Pwned breach lookups. |
+| `INTELX_API_KEY` | optional | Live IntelX search. |
+| `TOR_SOCKS_HOST` / `TOR_SOCKS_PORT` | optional | Tor SOCKS5 proxy (defaults `tor` / `9050` under Docker). |
+| `USE_REAL_FLEET` | optional | `1` = run the real swarm; unset/`0` = mocked fallback. |
+| `EXTERNAL_URL` | optional | Gateway URL the sealed app dispatches to (default `http://localhost:3000`). |
+| `INTERNAL_URL` | optional | Internal app URL the gateway proxies `/bank/*` to (default `http://localhost:3100`). |
+
+---
+
+## Running the system
+
+### Full topology (Docker — recommended)
+
+This is the only mode that reproduces the real air-gap.
 
 ```bash
-docker compose exec internal-app curl https://google.com               # → times out (no internet)
-docker compose exec internal-app curl http://external-app:3000/api/health  # → 200 (only the gateway is reachable)
+docker compose up --build
 ```
 
-**Real swarm vs fallback.** Out of the box the fleet runs a safe **mocked fallback** (deterministic hero signal), so the demo always completes. To light up the *real* OpenAI swarm + live Tor, copy `.env.example` → `.env` and set:
+- Ops-center: <http://localhost:3000>
+- Sealed enterprise app: <http://localhost:3000/bank>
 
+Verify the cage is real:
+
+```bash
+docker compose exec internal-app curl https://google.com                  # times out — no internet
+docker compose exec internal-app curl http://external-app:3000/api/health # 200 — only the gateway is reachable
 ```
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL_STRONG=<model id>
-OPENAI_MODEL_FAST=<model id>
-# optional: HIBP_API_KEY, INTELX_API_KEY
+
+### Local development (no Docker)
+
+```bash
+pnpm --filter @altai/external dev   # gateway + ops-center on :3000
+pnpm --filter @altai/internal dev   # sealed app on :3100 (also reachable via :3000/bank)
 ```
 
-**Local dev (no Docker):** `pnpm --filter @altai/external dev` (:3000) + `pnpm --filter @altai/internal dev` (:3100). `pnpm test` runs the suite, `pnpm typecheck` the whole workspace.
+Note: local dev does not enforce the network air-gap (that's a Docker-only guarantee); it's for fast iteration on the gateway, fleet, and UI.
 
-### Status
+### Workspace commands
 
-- ✅ **Phase 0** — monorepo, Zod contract, mocked end-to-end demo, real Docker cage
-- ✅ **Phase 1** — real OpenAI agent swarm (Planner + Web/Tor/Breach scouts), Tor/breach/OSINT tools, hero pinning, fallback safety
-- ✅ **Phase 2** — Membrane (Injection Hunter catches a live dark-web injection + Sanitizer + Judge) + Ed25519/Merkle audit ledger; sealed-side signature verification + live tamper-demo
-- ✅ **Phase 3** — hero beat: stock-overlay chart (leak vs disclosure markers) + AlphaCard (real short return computed from the price series) + noisy-OR confidence-fusion bars; Tor exit IP + geo in the live trace
-- ⏭ **Polish** — run `pnpm --filter @altai/fixtures pull-prices` for verified closes; demo rehearsal + backup video
+```bash
+pnpm build        # build all apps and packages (turbo)
+pnpm test         # run the full test suite
+pnpm typecheck    # typecheck the whole workspace
 
-> Architecture spec & phase plans live in `docs/superpowers/specs/` and `docs/superpowers/plans/`.
-
----
-
-## 📊 Business / pitch essentials
-
-- **Buyer:** a trader (warm, paying) + QRT (stated need) → quant funds, family offices, threat-intel teams, any enterprise air-gapping its agents.
-- **Model:** usage-based (per-mission / per-signal — pay for alpha) + platform/compliance tiers.
-- **Vision:** the **external nervous system of the agent economy** — a bidding marketplace where specialized agent providers fulfil missions for sealed enterprise agents. *(Vision, NOT the 36h MVP — MVP is a single first-party gateway.)*
-- **Anti-feed line:** "Recorded Future is a feed for humans. Altai is an agent-native, compliant egress layer that returns a decision."
+# refresh verified market data for the example case
+pnpm --filter @altai/fixtures pull-prices
+```
 
 ---
 
-## ⚠️ Risks we're actively managing
+## API reference
 
-| Risk | Mitigation |
-|---|---|
-| "Just dark-web monitoring (Recorded Future)" | Lead with agent-native compliant egress + per-mission dispatch + tradeable signal, not a feed |
-| Legal/ethical alarm (Tor, wallets) | **Defensive / OSINT read-only. No illicit transactions.** Everything audited. State it up front |
-| Live Tor flakiness in demo | One real live Tor fetch to prove capability; headline breach signal pre-collected/verified |
-| Looks like a thin proxy/VPN | Show the policy + audit + identity-isolation + signal-extraction stack; emphasize MCP + isolation |
-| Signal credibility | Use a real breach that really preceded a real stock move; show provenance + timestamps |
-| Most-crowded track | Win with the impossible transformation + warm finance buyer + compliance moat |
+The gateway (`apps/external`) exposes the egress and observability surface.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/missions` | Dispatch a mission. Body: a `Mission`. Returns `{ id }`. |
+| `GET` | `/api/events` | Server-Sent Events firehose of `TraceEvent`s and the final `signal`. |
+| `GET` | `/api/missions/:id/signal` | The `SignedBrief` once ready (`202` while in progress). |
+| `GET` | `/api/missions/:id/audit` | Audit ledger + `signature_valid` + `ledger_ok`. |
+| `POST` | `/api/missions/:id/tamper` | Demo control: mutate one ledger entry to show tamper-evidence. |
+| `GET` | `/api/prices/:ticker` | Daily close series for the overlay chart (market data, outside the signed payload). |
+| `GET` | `/api/health` | Liveness probe. |
+
+The sealed app (`apps/internal`, under `/bank`) exposes only its egress:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/bank/api/dispatch` | The sealed agent's single outbound action → forwards to the gateway. |
+| `GET` | `/bank/api/signal/:id` | Fetches the brief from the gateway and verifies the Ed25519 signature locally. |
 
 ---
 
-## 📚 Strategic context
+## Data contracts
 
-Full strategy, scoring, competitor analysis and the detailed spec live in the brainstorm vault (`yc-brainstorm`):
-- `17_Project_Spec_Altai.md` — source of truth for the project
-- `AGENTS.md` — strategy, QRT lever, winning patterns
-- `00_Context_Paris_Builds.md` — event, sponsors, judging
+All packages code against `@altai/contracts` (Zod schemas → inferred TypeScript types). The core objects:
+
+```ts
+Mission           // what the sealed agent dispatches
+{ id, query, target_entity?, ticker?, allowed_sources[], scope: "osint_readonly",
+  data_classes[], max_spend_usd }
+
+SourceContribution // one independent corroborating source (feeds confidence fusion)
+{ name, type: "tor_forum"|"breach_api"|"paste"|"press"|"filing", url?, reliability, observed_at }
+
+Signal            // the structured intelligence output
+{ entity, ticker?, event_type, sources[], confidence, confidence_method: "noisy_or",
+  observed_at, disclosed_at?, lead_time_days?, alpha?, summary }
+
+AlphaCard         // quant framing: short-the-leak window
+{ strategy, entry_date, exit_date, entry_price?, exit_price?, return_pct?, note? }
+
+AuditEntry        // hash-chained Merkle leaf
+{ seq, ts, actor, action, source?, target?, hash, prev_hash }
+
+SignedBrief       // what crosses back to the sealed agent
+{ signal, audit_root, signature, public_key }
+
+TraceEvent        // streamed over SSE; drives the ops-center
+{ mission_id, ts, layer, agent, level, msg, meta? }
+```
 
 ---
 
-*Let's take the interview. 🦅*
+## Security model
+
+- **Network air-gap.** The sealed network is `internal=true` — no NAT, no route to the internet. The only reachable host is the gateway. Enforced by Docker, not by application code.
+- **No credentials on the sealed side.** API keys live only on the gateway. The sealed environment can't leak what it doesn't hold.
+- **Identity isolation.** The client's identity, IP, and raw query never leave the gateway; the fleet acts under Altai's egress.
+- **Defensive / read-only.** Scope is fixed to OSINT read-only. The fleet observes and reports; it never transacts.
+- **Inbound membrane.** Returned content is sanitized (PII/secrets/malware) and scanned for prompt-injection before it can reach the sealed agent.
+- **Tamper-evident provenance.** Every action is hash-chained into a Merkle ledger; the brief is Ed25519-signed over the signal plus the Merkle root. Altering any entry breaks the recomputed root, and the sealed side detects it on verification.
+
+---
+
+## Testing
+
+```bash
+pnpm test        # all packages
+pnpm typecheck   # all packages
+```
+
+Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection), the tools (web/breach), the agents (planner synthesis, membrane injection detection), and the fixtures (confidence fusion and AlphaCard computation).
+
+---
+
+## Tech stack
+
+- **Language:** TypeScript across the whole monorepo.
+- **Apps:** Next.js 15 (App Router), React 19.
+- **Agents:** Vercel AI SDK (`ai` + `@ai-sdk/openai`) — provider-agnostic (one-import swap).
+- **Contracts:** Zod.
+- **Crypto:** Node `crypto` (Ed25519) + a hand-rolled Merkle ledger.
+- **Egress:** `fetch-socks` over a Tor SOCKS5 daemon; native `fetch` for clear-web and breach APIs.
+- **Market data:** `yahoo-finance2`.
+- **Tooling:** pnpm workspaces + Turborepo.
+- **Runtime:** Docker Compose, two networks (the cage).
+
+---
+
+## Roadmap
+
+- **MCP server** — expose `altai.dispatch` / `altai.fetch_signal` as Model Context Protocol tools so any MCP-capable agent (Claude Desktop, Cursor, …) can call Altai natively.
+- **On-prem / local inference** — run the agents on local open-weight models behind the gateway so the client's queries never leave the perimeter (SGX / confidential compute for attestation).
+- **Expanded sources** — Telegram channels, paste sites, additional breach providers, and pluggable OSINT connectors.
+- **Marketplace** — open the fleet to third-party specialized agent providers that bid on dispatched missions.
+- **Policy & multi-tenancy** — a real policy editor, per-tenant isolation, spend metering, and exportable compliance reports.
+
+---
+
+## License
+
+Proprietary — all rights reserved.
