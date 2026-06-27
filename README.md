@@ -90,6 +90,24 @@ Two consequences fall out of the topology, and both are demonstrable:
 - The sealed container genuinely cannot reach the internet (`curl https://google.com` times out). Its only reachable host is the gateway.
 - The Anthropic/OpenAI API key lives **only** on the gateway. The sealed environment holds no credentials and has no wire access.
 
+### 🔌 MCP layer — how any agent dispatches a mission
+
+The dispatch layer is exposed over **MCP** so *any* MCP-capable agent — not just our UI — can launch missions. The design is intentionally thin:
+
+- **`apps/research-mcp` is a thin MCP adapter over `apps/external`.** It owns no research logic, fleet, mock data, audit or crypto. It speaks MCP (Streamable HTTP) and forwards each tool call to the external gateway via `EXTERNAL_URL`. Tools: `dispatch_research_mission` → `POST /api/missions`, `get_mission_status` → `GET /api/missions/:id/signal`, `fetch_signal` → `GET /api/missions/:id/signal` + `/audit`.
+- **`apps/external` remains the real research pipeline** — the single source of truth. The MCP path and the direct HTTP path run the *exact same* governed flow (policy → identity isolation → web/Tor/breach fleet → membrane → Ed25519/Merkle audit). No duplicated fleet.
+- **Policy blocking is enforced at ingress** (`apps/external/lib/policy.ts`, in `POST /api/missions`). Because it sits at the single mission entry point, *every* caller — the sealed agent, the MCP adapter, any future agent — is governed identically. Out-of-scope/unsafe missions are rejected with `403` before any execution.
+- **`apps/internal` keeps two panels for demo/debugging.** The top **direct-HTTP** panel exercises the existing pipeline directly; the bottom **MCP** panel dispatches through `research-mcp`. Both hit the same `external-app`, so there is no behavioural divergence.
+- **The MCP panel proves any AI agent can dispatch missions through MCP** — the sealed internal agent drives the three MCP tools end-to-end (dispatch → status → fetch_signal) and gets back the same sanitized, signed brief. (We can collapse to a single path later for a cleaner final UI.)
+
+```
+ internal-app ──MCP──► research-mcp ──HTTP(EXTERNAL_URL)──► external-app (policy@ingress → fleet → membrane → audit)
+ internal-app ──────────────HTTP (direct)──────────────────► external-app
+        (any MCP agent) ──MCP──► research-mcp ──► same pipeline
+```
+
+Run just this slice: `docker compose up --build research-mcp external-app internal-app` → sealed chat at `http://localhost:3000/bank`, adapter health at `http://localhost:3200/health`.
+
 ---
 
 ## How it works (the six layers)
