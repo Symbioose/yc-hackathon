@@ -127,15 +127,17 @@ Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Periscope fleet i
 
 | Layer | Choice |
 |---|---|
-| Sandbox-side | **MCP server** (`dispatch`, `status`, `fetch_signal`) + thin SDK; demo internal agent in a visibly sealed env |
-| Gateway/broker | Python (FastAPI) — mission queue + orchestration of the 6 layers |
-| Compliance layers | Policy Agent (pre-exec validation) · Guardrail Agent (read-only enforcement) · Sanitization Agent (PII/secret/malware strip) · Audit Agent (immutable signed log + report) · identity isolation (rotating egress) |
-| Research fleet | Isolated workers (VM/container, distinct egress); web-agent + Tor-agent + data-API agent + signal agent; Tor via `tor` daemon → SOCKS5 `127.0.0.1:9050`; httpx/Playwright through it for `.onion` |
-| Collection | OSINT (web/RSS/blocked sites), Ahmia (clearnet `.onion` index), IntelX API, HIBP/Dehashed, optional Telegram (Telethon) |
-| Signal extraction | LLM → structured signal `{entity, event, confidence, source, timestamp}` |
-| Backtest | yfinance → signal timestamp vs price-move chart → lead-time |
-| Frontend | React split-screen (sealed left, fleet right) + mission trace + signal card + stock overlay + audit log |
-| Hosting | Hackathon: **VPS** (we operate the infra) + Claude API. Roadmap: on-prem / local open-weight models / SGX for query sovereignty. Front on Vercel |
+| Monorepo | **pnpm workspace + Turborepo**, **TypeScript** everywhere |
+| Sealed side | **Next.js** sealed chat (`apps/internal`) — dispatch-only egress; runs on a Docker `internal:true` network (genuinely no internet) |
+| Gateway / broker | **Next.js (App Router)** route handlers (`apps/external`) — mission ingress, SSE trace stream, 6-layer orchestration; bridges both networks |
+| Agent fleet | **Vercel AI SDK v5 + OpenAI** (`@periscope/agents`): Planner + Web / Tor / Breach scouts (real tool-calling) |
+| Tools | `@periscope/tools`: web fetch, **Tor** SOCKS5 (`fetch-socks` → `tor` daemon `:9050`), Ahmia (`.onion` index), HIBP / IntelX |
+| Contract | **Zod** shared package (`@periscope/contracts`): Mission · TraceEvent · Signal · AuditEntry · SignedBrief |
+| Signal | multi-source confidence fusion (noisy-OR) + quant **AlphaCard**; deterministic hero pinning for the demo |
+| Backtest | `yahoo-finance2` → price series + lead-time |
+| Frontend | React (Next): ops-center (live trace + signal card) + sealed chat, served on one origin (`/` and `/bank`) |
+| Runtime | **Docker Compose**, 2 networks — `internal:true` (sealed) + `external` (internet + Tor) = the real cage |
+| Provider | **OpenAI** via `@ai-sdk/openai` (provider-agnostic — one-import swap back to Claude). Roadmap: on-prem / local models / SGX |
 
 ---
 
@@ -163,21 +165,45 @@ Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Periscope fleet i
 
 ---
 
-## 🚀 Getting started (to fill as we scaffold)
+## 🚀 Getting started
 
 ```bash
-# clone
 git clone https://github.com/Symbioose/yc-hackathon.git
 cd yc-hackathon
+pnpm install
 
-# backend (Python) — gateway + fleet + Tor
-# cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && uvicorn main:app --reload
-
-# frontend (React) — split-screen demo
-# cd frontend && npm install && npm run dev
+# run the full demo (sealed cage + gateway + fleet + Tor) under Docker
+docker compose up --build
+#   → http://localhost:3000        ops-center (live trace + signal card)
+#   → http://localhost:3000/bank   sealed bank chat (ask → dispatch → brief)
 ```
 
-> Repo structure, env vars (INTELX_API_KEY, HIBP_API_KEY, ANTHROPIC_API_KEY…) and run commands will be added here as we scaffold.
+**Prove the cage is real:**
+
+```bash
+docker compose exec internal-app curl https://google.com               # → times out (no internet)
+docker compose exec internal-app curl http://external-app:3000/api/health  # → 200 (only the gateway is reachable)
+```
+
+**Real swarm vs fallback.** Out of the box the fleet runs a safe **mocked fallback** (deterministic hero signal), so the demo always completes. To light up the *real* OpenAI swarm + live Tor, copy `.env.example` → `.env` and set:
+
+```
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL_STRONG=<model id>
+OPENAI_MODEL_FAST=<model id>
+# optional: HIBP_API_KEY, INTELX_API_KEY
+```
+
+**Local dev (no Docker):** `pnpm --filter @periscope/external dev` (:3000) + `pnpm --filter @periscope/internal dev` (:3100). `pnpm test` runs the suite, `pnpm typecheck` the whole workspace.
+
+### Status
+
+- ✅ **Phase 0** — monorepo, Zod contract, mocked end-to-end demo, real Docker cage
+- ✅ **Phase 1** — real OpenAI agent swarm (Planner + Web/Tor/Breach scouts), Tor/breach/OSINT tools, hero pinning, fallback safety
+- ⏭ **Phase 2** — Membrane (Sanitizer + Injection Hunter + Judge) + Ed25519/Merkle audit ledger + tamper-demo
+- ⏭ **Phase 3** — AlphaCard + stock-overlay UI, polish
+
+> Architecture spec & phase plans live in `docs/superpowers/specs/` and `docs/superpowers/plans/`.
 
 ---
 
