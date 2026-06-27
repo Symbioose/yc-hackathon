@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { MissionSchema } from "@periscope/contracts";
+import { MissionSchema } from "@altai/contracts";
 
 const GATEWAY = process.env.EXTERNAL_URL ?? "http://localhost:3000";
 

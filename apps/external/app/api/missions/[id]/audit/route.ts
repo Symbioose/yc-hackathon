@@ -1,5 +1,5 @@
 import { getBrief, getEntries } from "@/lib/missionStore";
-import { verifyBrief, verifyLedger } from "@periscope/crypto";
+import { verifyBrief, verifyLedger } from "@altai/crypto";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;

@@ -1,4 +1,4 @@
-import type { Signal, AuditEntry, SignedBrief } from "@periscope/contracts";
+import type { Signal, AuditEntry, SignedBrief } from "@altai/contracts";
 import { canonical } from "./canonical";
 import { merkleRoot } from "./merkle";
 import { keyPair, sign, verifySig } from "./sign";

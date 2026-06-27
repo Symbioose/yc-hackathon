@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { Signal } from "@periscope/contracts";
-import { plantedInjection } from "@periscope/fixtures";
+import type { Signal } from "@altai/contracts";
+import { plantedInjection } from "@altai/fixtures";
 import { huntInjection, sanitize } from "./membrane";
 
 describe("membrane", () => {

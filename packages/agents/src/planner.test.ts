@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { SignalSchema } from "@periscope/contracts";
+import { SignalSchema } from "@altai/contracts";
 
 // Mock the scouts so the test is deterministic and offline (avoids loading the AI SDK).
 vi.mock("./scouts", () => ({

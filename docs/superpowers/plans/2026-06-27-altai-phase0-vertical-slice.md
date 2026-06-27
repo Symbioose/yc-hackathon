@@ -1,4 +1,4 @@
-# Periscope Phase 0 — Vertical Slice on Mocks — Implementation Plan
+# Altai Phase 0 — Vertical Slice on Mocks — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript (ESM), Next.js 15 (App Router), Zod, Vitest, pnpm 10, Turborepo, Docker Compose, `yahoo-finance2` (fixture generation only).
 
-**Reference spec:** `docs/superpowers/specs/2026-06-27-periscope-architecture-design.md`
+**Reference spec:** `docs/superpowers/specs/2026-06-27-altai-architecture-design.md`
 
 ---
 
@@ -75,7 +75,7 @@ packages:
 
 ```json
 {
-  "name": "periscope",
+  "name": "altai",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.21.0",
@@ -162,7 +162,7 @@ git commit -m "chore: scaffold pnpm + turborepo monorepo"
 
 ```json
 {
-  "name": "@periscope/contracts",
+  "name": "@altai/contracts",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -243,7 +243,7 @@ describe("contracts", () => {
 
 - [ ] **Step 4: Run the test to verify it fails**
 
-Run: `pnpm --filter @periscope/contracts test`
+Run: `pnpm --filter @altai/contracts test`
 Expected: FAIL — cannot resolve `./index` / exports not defined.
 
 - [ ] **Step 5: Implement `packages/contracts/src/index.ts`**
@@ -333,7 +333,7 @@ export type TraceEvent = z.infer<typeof TraceEventSchema>;
 
 - [ ] **Step 6: Run the test to verify it passes**
 
-Run: `pnpm --filter @periscope/contracts test`
+Run: `pnpm --filter @altai/contracts test`
 Expected: PASS (5 tests).
 
 - [ ] **Step 7: Commit**
@@ -358,7 +358,7 @@ git commit -m "feat(contracts): shared Zod schemas (Mission, Signal, AuditEntry,
 
 ```json
 {
-  "name": "@periscope/fixtures",
+  "name": "@altai/fixtures",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -372,7 +372,7 @@ git commit -m "feat(contracts): shared Zod schemas (Mission, Signal, AuditEntry,
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": { "@periscope/contracts": "workspace:*" },
+  "dependencies": { "@altai/contracts": "workspace:*" },
   "devDependencies": {
     "typescript": "^5.7.0", "vitest": "^2.1.0",
     "tsx": "^4.19.0", "yahoo-finance2": "^2.13.0"
@@ -459,7 +459,7 @@ console.log(
 
 - [ ] **Step 5: Generate the real price series (requires network)**
 
-Run: `pnpm --filter @periscope/fixtures pull-prices`
+Run: `pnpm --filter @altai/fixtures pull-prices`
 Expected: prints non-zero point counts for both tickers; `hero_case.json` now has populated `price_series` arrays.
 If the network is unavailable in your environment, hand-enter ~3 anchor points per series so the array is non-empty (date+close around the event dates) and proceed; replace with real data before the demo.
 
@@ -467,7 +467,7 @@ If the network is unavailable in your environment, hand-enter ~3 anchor points p
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { SignalSchema } from "@periscope/contracts";
+import { SignalSchema } from "@altai/contracts";
 import { heroSignal, heroCase } from "./index";
 
 describe("fixtures", () => {
@@ -490,14 +490,14 @@ describe("fixtures", () => {
 
 - [ ] **Step 7: Run the test to verify it fails**
 
-Run: `pnpm --filter @periscope/fixtures test`
+Run: `pnpm --filter @altai/fixtures test`
 Expected: FAIL — `./index` exports not defined.
 
 - [ ] **Step 8: Implement `packages/fixtures/src/index.ts`**
 
 ```ts
 import { createRequire } from "node:module";
-import type { Signal, SourceContribution } from "@periscope/contracts";
+import type { Signal, SourceContribution } from "@altai/contracts";
 
 const require = createRequire(import.meta.url);
 export const heroCase = require("../hero_case.json") as HeroCase;
@@ -538,7 +538,7 @@ export function heroSignal(): Signal {
 
 - [ ] **Step 9: Run the test to verify it passes**
 
-Run: `pnpm --filter @periscope/fixtures test`
+Run: `pnpm --filter @altai/fixtures test`
 Expected: PASS (2 tests).
 
 - [ ] **Step 10: Commit**
@@ -561,7 +561,7 @@ git commit -m "feat(fixtures): hero_case (Ticketmaster + Medibank) + price pulle
 
 ```json
 {
-  "name": "@periscope/external",
+  "name": "@altai/external",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -572,8 +572,8 @@ git commit -m "feat(fixtures): hero_case (Ticketmaster + Medibank) + price pulle
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@periscope/contracts": "workspace:*",
-    "@periscope/fixtures": "workspace:*",
+    "@altai/contracts": "workspace:*",
+    "@altai/fixtures": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -607,7 +607,7 @@ git commit -m "feat(fixtures): hero_case (Ticketmaster + Medibank) + price pulle
 ```js
 /** @type {import('next').NextConfig} */
 export default {
-  transpilePackages: ["@periscope/contracts", "@periscope/fixtures"],
+  transpilePackages: ["@altai/contracts", "@altai/fixtures"],
 };
 ```
 
@@ -615,7 +615,7 @@ export default {
 
 ```tsx
 import "./globals.css";
-export const metadata = { title: "Periscope — Ops Center" };
+export const metadata = { title: "Altai — Ops Center" };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -645,7 +645,7 @@ export function GET() {
 
 ```ts
 import { EventEmitter } from "node:events";
-import type { Signal, TraceEvent } from "@periscope/contracts";
+import type { Signal, TraceEvent } from "@altai/contracts";
 
 interface MissionState { id: string; events: TraceEvent[]; signal?: Signal; done: boolean; }
 
@@ -675,8 +675,8 @@ export function getSignal(id: string): Signal | undefined {
 - [ ] **Step 8: Create `apps/external/lib/fakeFleet.ts`**
 
 ```ts
-import type { Mission, TraceEvent } from "@periscope/contracts";
-import { heroSignal } from "@periscope/fixtures";
+import type { Mission, TraceEvent } from "@altai/contracts";
+import { heroSignal } from "@altai/fixtures";
 import { completeMission, emitTrace } from "./missionStore";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -686,7 +686,7 @@ type Step = Pick<TraceEvent, "layer" | "agent" | "level" | "msg"> & { meta?: Rec
 const SCRIPT: Step[] = [
   { layer: "dispatch", agent: "Gateway", level: "info", msg: "Mission received via sealed egress" },
   { layer: "policy", agent: "PolicyAgent", level: "success", msg: "Mission within tenant policy (osint_readonly)" },
-  { layer: "identity", agent: "IdentityIsolation", level: "info", msg: "Client identity stripped; acting under Periscope egress" },
+  { layer: "identity", agent: "IdentityIsolation", level: "info", msg: "Client identity stripped; acting under Altai egress" },
   { layer: "execution", agent: "Planner", level: "action", msg: "Decomposing mission → Web/Tor/Breach scouts" },
   { layer: "execution", agent: "WebScout", level: "action", msg: "Fetching open + blocked sources" },
   { layer: "execution", agent: "TorScout", level: "action", msg: "Tor circuit established; fetching .onion", meta: { exit_ip: "185.220.101.4", country: "DE", circuit: ["FR-guard", "DE-relay", "NL-exit"] } },
@@ -709,7 +709,7 @@ export async function runFakeFleet(mission: Mission): Promise<void> {
 
 - [ ] **Step 9: Verify the app boots and health responds**
 
-Run (in one terminal): `pnpm --filter @periscope/external dev`
+Run (in one terminal): `pnpm --filter @altai/external dev`
 Run (in another): `curl -s http://localhost:3000/api/health`
 Expected: `{"ok":true,"service":"external"}`. Stop the dev server after verifying.
 
@@ -733,7 +733,7 @@ git commit -m "feat(external): Next skeleton + mission store + scripted fake fle
 
 ```ts
 import { randomUUID } from "node:crypto";
-import { MissionSchema } from "@periscope/contracts";
+import { MissionSchema } from "@altai/contracts";
 import { createMission } from "@/lib/missionStore";
 import { runFakeFleet } from "@/lib/fakeFleet";
 
@@ -803,7 +803,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
 - [ ] **Step 4: Verify the full mock flow over HTTP**
 
-Run (terminal 1): `pnpm --filter @periscope/external dev`
+Run (terminal 1): `pnpm --filter @altai/external dev`
 Run (terminal 2): `curl -N -s http://localhost:3000/api/events &` then
 `MID=$(curl -s -X POST http://localhost:3000/api/missions -H 'content-type: application/json' -d '{"query":"Is LYV compromised?","ticker":"LYV","allowed_sources":["BreachForums"],"data_classes":["breach"],"max_spend_usd":5}' | sed -E 's/.*"id":"([^"]+)".*/\1/')`
 Expected (terminal 2): the `event: trace` lines stream in over ~7s, then an `event: signal`.
@@ -829,7 +829,7 @@ git commit -m "feat(external): gateway routes — dispatch, SSE firehose, signal
 ```tsx
 "use client";
 import { useEffect, useState } from "react";
-import type { Signal, TraceEvent } from "@periscope/contracts";
+import type { Signal, TraceEvent } from "@altai/contracts";
 
 const LAYER_COLOR: Record<string, string> = {
   dispatch: "#7aa2f7", policy: "#e0af68", identity: "#9ece6a",
@@ -850,7 +850,7 @@ export default function OpsCenter() {
   return (
     <main style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 16, padding: 24, minHeight: "100vh" }}>
       <section>
-        <h1 style={{ fontSize: 18, letterSpacing: 2 }}>🔭 PERISCOPE — OPS CENTER</h1>
+        <h1 style={{ fontSize: 18, letterSpacing: 2 }}>🔭 ALTAI — OPS CENTER</h1>
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 4 }}>
           {events.map((ev, i) => (
             <div key={i} style={{ fontSize: 13 }}>
@@ -894,7 +894,7 @@ export default function OpsCenter() {
 
 - [ ] **Step 2: Verify the ops-center renders the trace + signal**
 
-Run: `pnpm --filter @periscope/external dev`, open `http://localhost:3000`, then in another terminal POST a mission (command from Task 5 Step 4).
+Run: `pnpm --filter @altai/external dev`, open `http://localhost:3000`, then in another terminal POST a mission (command from Task 5 Step 4).
 Expected: the left pane fills with color-coded trace lines (Tor line shows the exit IP), and the right Signal card appears showing "Live Nation… · 4 days early · 88% confidence". Stop the server after.
 
 - [ ] **Step 3: Commit**
@@ -917,7 +917,7 @@ git commit -m "feat(external): ops-center UI — live trace + signal card"
 
 ```json
 {
-  "name": "@periscope/internal",
+  "name": "@altai/internal",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -928,7 +928,7 @@ git commit -m "feat(external): ops-center UI — live trace + signal card"
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@periscope/contracts": "workspace:*",
+    "@altai/contracts": "workspace:*",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -962,7 +962,7 @@ git commit -m "feat(external): ops-center UI — live trace + signal card"
 ```js
 /** @type {import('next').NextConfig} */
 export default {
-  transpilePackages: ["@periscope/contracts"],
+  transpilePackages: ["@altai/contracts"],
 };
 ```
 
@@ -992,7 +992,7 @@ body { margin: 0; background: #f6f7f9; color: #1a1f2b; font-family: ui-sans-seri
 
 ```ts
 import { randomUUID } from "node:crypto";
-import { MissionSchema } from "@periscope/contracts";
+import { MissionSchema } from "@altai/contracts";
 
 const GATEWAY = process.env.EXTERNAL_URL ?? "http://localhost:3000";
 
@@ -1036,7 +1036,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 ```tsx
 "use client";
 import { useState } from "react";
-import type { Signal } from "@periscope/contracts";
+import type { Signal } from "@altai/contracts";
 
 export default function SealedChat() {
   const [q, setQ] = useState("Is issuer Live Nation (LYV) compromised?");
@@ -1045,7 +1045,7 @@ export default function SealedChat() {
 
   async function ask() {
     setSignal(null);
-    setStatus("Sealed agent: no internet — dispatching mission to Periscope…");
+    setStatus("Sealed agent: no internet — dispatching mission to Altai…");
     const r = await fetch("/api/dispatch", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -1064,7 +1064,7 @@ export default function SealedChat() {
   return (
     <main style={{ maxWidth: 640, margin: "40px auto", padding: 24 }}>
       <h1 style={{ fontSize: 18 }}>🏦 Acme Bank — Sealed Internal Agent</h1>
-      <p style={{ color: "#667", fontSize: 13 }}>This environment has no internet. Its only egress is Periscope.</p>
+      <p style={{ color: "#667", fontSize: 13 }}>This environment has no internet. Its only egress is Altai.</p>
       <textarea value={q} onChange={(e) => setQ(e.target.value)} rows={3}
         style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #ccd" }} />
       <button onClick={ask} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, border: 0, background: "#1a1f2b", color: "white", cursor: "pointer" }}>
@@ -1085,8 +1085,8 @@ export default function SealedChat() {
 
 - [ ] **Step 9: Verify internal → external end-to-end (both apps local)**
 
-Run (terminal 1): `pnpm --filter @periscope/external dev`
-Run (terminal 2): `pnpm --filter @periscope/internal dev`
+Run (terminal 1): `pnpm --filter @altai/external dev`
+Run (terminal 2): `pnpm --filter @altai/internal dev`
 Open `http://localhost:3100`, click "Ask sealed agent". Open `http://localhost:3000` to watch the trace ignite.
 Expected: internal shows "dispatching…" → after ~8s renders the brief ("Live Nation (LYV) … 4 days before public disclosure"); ops-center shows the full trace + signal card. Stop servers after.
 

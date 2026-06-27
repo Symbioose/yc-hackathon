@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { MissionSchema } from "@periscope/contracts";
+import { MissionSchema } from "@altai/contracts";
 import { createMission } from "@/lib/missionStore";
 import { runFleet } from "@/lib/fleet";
 

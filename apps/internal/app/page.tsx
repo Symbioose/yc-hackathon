@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import type { SignedBrief } from "@periscope/contracts";
+import type { SignedBrief } from "@altai/contracts";
 
 interface BriefResult {
   brief: SignedBrief;
@@ -14,7 +14,7 @@ export default function SealedChat() {
 
   async function ask() {
     setResult(null);
-    setStatus("Sealed agent: no internet — dispatching mission to Periscope…");
+    setStatus("Sealed agent: no internet — dispatching mission to Altai…");
     const r = await fetch("/bank/api/dispatch", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -38,8 +38,8 @@ export default function SealedChat() {
 
   return (
     <main style={{ maxWidth: 640, margin: "40px auto", padding: 24 }}>
-      <h1 style={{ fontSize: 18 }}>🏦 Acme Bank — Sealed Internal Agent</h1>
-      <p style={{ color: "#667", fontSize: 13 }}>This environment has no internet. Its only egress is Periscope.</p>
+      <h1 style={{ fontSize: 18 }}>🏦 Meridian Capital — Sealed Internal Agent</h1>
+      <p style={{ color: "#667", fontSize: 13 }}>This environment has no internet. Its only egress is Altai.</p>
       <textarea
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -72,7 +72,7 @@ export default function SealedChat() {
             }}
           >
             {result.verified
-              ? "✓ Ed25519 signature valid — provably from Periscope, untampered"
+              ? "✓ Ed25519 signature valid — provably from Altai, untampered"
               : "✗ signature INVALID — do not trust this brief"}
           </div>
         </div>

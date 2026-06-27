@@ -1,14 +1,14 @@
-# Periscope Phase 2 — Membrane + Crypto Attestation + Tamper-Demo — Plan
+# Altai Phase 2 — Membrane + Crypto Attestation + Tamper-Demo — Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or executing-plans. (This phase was executed inline; commits are the record.) Steps use `- [ ]`.
 
 **Goal:** Make the inbound boundary *prove* itself. A real multi-agent **Membrane** (Sanitizer + Injection Hunter + Judge) gates everything crossing back; the result is **cryptographically attested** (Ed25519 signature over the Signal + a Merkle-rooted audit ledger); the sealed side **independently verifies** the signature; and a live **tamper-demo** shows editing one audit entry breaking the Merkle root → verification flips RED.
 
-**Architecture:** New `packages/crypto` (canonical JSON · Merkle ledger · Ed25519 sign/verify · SignedBrief). Membrane added to `@periscope/agents` (`sanitize`, `huntInjection`, deterministic so the injection catch fires every demo; LLM optional). The external mission flow, after the swarm, runs the membrane → builds an `AuditEntry[]` ledger from the emitted trace → computes the Merkle root → the Judge signs → stores a `SignedBrief`. New endpoints expose the audit ledger and a tamper control. The sealed `/api/signal` proxy verifies the signature server-side and returns `verified`. Ops-center gains an audit panel (entries + root + ✓/✗ + Tamper button).
+**Architecture:** New `packages/crypto` (canonical JSON · Merkle ledger · Ed25519 sign/verify · SignedBrief). Membrane added to `@altai/agents` (`sanitize`, `huntInjection`, deterministic so the injection catch fires every demo; LLM optional). The external mission flow, after the swarm, runs the membrane → builds an `AuditEntry[]` ledger from the emitted trace → computes the Merkle root → the Judge signs → stores a `SignedBrief`. New endpoints expose the audit ledger and a tamper control. The sealed `/api/signal` proxy verifies the signature server-side and returns `verified`. Ops-center gains an audit panel (entries + root + ✓/✗ + Tamper button).
 
 **Tech Stack:** `node:crypto` (Ed25519, sha256), TypeScript, Zod (`SignedBrief` already in contracts), Vitest. No new runtime deps.
 
-**Reference spec:** `docs/superpowers/specs/2026-06-27-periscope-architecture-design.md` §7.2, §7.3. Builds on Phase 0 + Phase 1.
+**Reference spec:** `docs/superpowers/specs/2026-06-27-altai-architecture-design.md` §7.2, §7.3. Builds on Phase 0 + Phase 1.
 
 ---
 
@@ -48,7 +48,7 @@
 **Files:** `apps/external/app/page.tsx`, `apps/internal/app/page.tsx` + `app/api/signal/[id]/route.ts`
 
 - [ ] Ops-center: audit panel — list `AuditEntry`s, the **Merkle root**, **Ed25519 ✓/✗**, and a **Tamper** button (POST `/tamper` → re-fetch `/audit` → flips RED). The injection quarantine line shows in the trace.
-- [ ] Sealed app: `/api/signal` proxy calls `verifyBrief` server-side and returns `{ brief, verified }`; the chat shows "✓ signature valid — provably from Periscope, untampered".
+- [ ] Sealed app: `/api/signal` proxy calls `verifyBrief` server-side and returns `{ brief, verified }`; the chat shows "✓ signature valid — provably from Altai, untampered".
 
 ---
 

@@ -1,14 +1,14 @@
-# Periscope Phase 1 — Real Research Swarm + Tools — Implementation Plan
+# Altai Phase 1 — Real Research Swarm + Tools — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the mocked fake fleet with a **real agentic swarm on OpenAI (Vercel AI SDK)** that genuinely acts on the outside world — real web fetch, one live Tor `.onion` fetch (foreign exit IP), real breach/OSINT lookups — while the **hero signal stays deterministic** (cached, contract-stable) and a **feature flag falls back to the fake fleet** for demo safety. The `TraceEvent`/`Signal` contract and the ops-center UI are unchanged.
 
-**Architecture:** New `packages/tools` (provider-agnostic tool functions: web, Tor, breach/OSINT) and `packages/agents` (AI SDK agents: Web/Tor/Breach Scouts + Planner orchestrator). The external gateway swaps `runFakeFleet` for `runFleet(mission)`, gated by `USE_REAL_FLEET`. Scouts call tools in an AI SDK `stopWhen: stepCountIs(...)` loop; each tool's `execute` emits `TraceEvent`s to the existing `missionStore` bus, so the ops-center "ignites" exactly as today. The Planner collects `SourceContribution[]`, fuses confidence (noisy-OR, already in `@periscope/fixtures`), and — for the hero ticker — pins the final `Signal` to the verified fixture so the climax is reproducible.
+**Architecture:** New `packages/tools` (provider-agnostic tool functions: web, Tor, breach/OSINT) and `packages/agents` (AI SDK agents: Web/Tor/Breach Scouts + Planner orchestrator). The external gateway swaps `runFakeFleet` for `runFleet(mission)`, gated by `USE_REAL_FLEET`. Scouts call tools in an AI SDK `stopWhen: stepCountIs(...)` loop; each tool's `execute` emits `TraceEvent`s to the existing `missionStore` bus, so the ops-center "ignites" exactly as today. The Planner collects `SourceContribution[]`, fuses confidence (noisy-OR, already in `@altai/fixtures`), and — for the hero ticker — pins the final `Signal` to the verified fixture so the climax is reproducible.
 
 **Tech Stack:** TypeScript (ESM), Vercel AI SDK (`ai` + `@ai-sdk/openai`), Zod, `fetch-socks` (undici SOCKS dispatcher for Tor), Vitest, Docker (`tor` daemon service). OpenAI models + API key via env.
 
-**Reference spec:** `docs/superpowers/specs/2026-06-27-periscope-architecture-design.md` (§3, §7.1, §7.4, §9, §10). Builds on the merged Phase 0.
+**Reference spec:** `docs/superpowers/specs/2026-06-27-altai-architecture-design.md` (§3, §7.1, §7.4, §9, §10). Builds on the merged Phase 0.
 
 ---
 
@@ -61,7 +61,7 @@ apps/external/
 docker-compose.yml      (MODIFY: add tor service + external-app env)
 ```
 
-`@periscope/contracts` (TraceEvent, Signal, SourceContribution) and `@periscope/fixtures` (`heroSignal`, `fuseConfidence`, `heroCase`) are reused unchanged.
+`@altai/contracts` (TraceEvent, Signal, SourceContribution) and `@altai/fixtures` (`heroSignal`, `fuseConfidence`, `heroCase`) are reused unchanged.
 
 ---
 
@@ -87,7 +87,7 @@ USE_REAL_FLEET=1
 
 ```json
 {
-  "name": "@periscope/tools",
+  "name": "@altai/tools",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -95,8 +95,8 @@ USE_REAL_FLEET=1
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
   "dependencies": {
-    "@periscope/contracts": "workspace:*",
-    "@periscope/fixtures": "workspace:*",
+    "@altai/contracts": "workspace:*",
+    "@altai/fixtures": "workspace:*",
     "fetch-socks": "^1.3.0",
     "undici": "^6.21.0"
   },
@@ -122,13 +122,13 @@ export * from "./breach";
 - [ ] **Step 5: Install**
 
 Run: `pnpm install`
-Expected: resolves `@periscope/tools` + `fetch-socks` + `undici`. (`index.ts` will not typecheck until web/ahmia/tor/breach exist — that's fine; later tasks add them. Do not run typecheck yet.)
+Expected: resolves `@altai/tools` + `fetch-socks` + `undici`. (`index.ts` will not typecheck until web/ahmia/tor/breach exist — that's fine; later tasks add them. Do not run typecheck yet.)
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add .env.example packages/tools/package.json packages/tools/tsconfig.json packages/tools/src/index.ts pnpm-lock.yaml
-git commit -m "chore(tools): scaffold @periscope/tools package + .env.example"
+git commit -m "chore(tools): scaffold @altai/tools package + .env.example"
 ```
 
 ---
@@ -155,7 +155,7 @@ describe("fetchUrl", () => {
   }, 15000);
 
   it("reports a failure (no throw) for an unresolvable host", async () => {
-    const r = await fetchUrl("https://nonexistent.invalid.periscope");
+    const r = await fetchUrl("https://nonexistent.invalid.altai");
     expect(r.ok).toBe(false);
     expect(r.error).toBeTruthy();
   }, 15000);
@@ -164,7 +164,7 @@ describe("fetchUrl", () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `pnpm --filter @periscope/tools test src/web.test.ts`
+Run: `pnpm --filter @altai/tools test src/web.test.ts`
 Expected: FAIL — `fetchUrl` not exported.
 
 - [ ] **Step 3: Implement `packages/tools/src/web.ts`**
@@ -185,7 +185,7 @@ export async function fetchUrl(url: string, timeoutMs = 10000): Promise<FetchRes
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, headers: { "user-agent": "PeriscopeBot/0.1" } });
+    const res = await fetch(url, { signal: ctrl.signal, headers: { "user-agent": "AltaiBot/0.1" } });
     const body = await res.text();
     const title = body.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim();
     return { url, ok: res.ok, status: res.status, text: body.slice(0, MAX), title };
@@ -199,7 +199,7 @@ export async function fetchUrl(url: string, timeoutMs = 10000): Promise<FetchRes
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `pnpm --filter @periscope/tools test src/web.test.ts`
+Run: `pnpm --filter @altai/tools test src/web.test.ts`
 Expected: PASS (2 tests). (Requires outbound internet — you have it on the host.)
 
 - [ ] **Step 5: Commit**
@@ -266,7 +266,7 @@ export async function torFetch(url: string, timeoutMs = 30000): Promise<TorResul
       // @ts-expect-error undici dispatcher is accepted at runtime by Node fetch
       dispatcher: dispatcher(),
       signal: ctrl.signal,
-      headers: { "user-agent": "PeriscopeBot/0.1" },
+      headers: { "user-agent": "AltaiBot/0.1" },
     });
     const body = await res.text();
     return { url, ok: res.ok, status: res.status, text: body.slice(0, 8000) };
@@ -287,7 +287,7 @@ export async function getExitIp(): Promise<{ ip?: string; error?: string }> {
 
 - [ ] **Step 3: Typecheck (no unit test — Tor is integration; verified in Task 8 under Docker)**
 
-Run: `pnpm --filter @periscope/tools typecheck`
+Run: `pnpm --filter @altai/tools typecheck`
 Expected: passes once `breach.ts` exists too. If `index.ts` re-export of `./breach` errors, temporarily comment that line, typecheck, then restore in Task 4. (Or do Task 4 first, then typecheck once.)
 
 - [ ] **Step 4: Commit**
@@ -327,14 +327,14 @@ describe("heroSourcesFor", () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `pnpm --filter @periscope/tools test src/breach.test.ts`
+Run: `pnpm --filter @altai/tools test src/breach.test.ts`
 Expected: FAIL — `heroSourcesFor` not exported.
 
 - [ ] **Step 3: Implement `packages/tools/src/breach.ts`**
 
 ```ts
-import type { SourceContribution } from "@periscope/contracts";
-import { heroCase } from "@periscope/fixtures";
+import type { SourceContribution } from "@altai/contracts";
+import { heroCase } from "@altai/fixtures";
 
 /** Hero pinning: for the demo ticker, return the verified fixture sources so the
  * final Signal is reproducible regardless of live API availability (spec §10). */
@@ -351,7 +351,7 @@ export async function hibpLookup(domain: string): Promise<SourceContribution[]> 
   if (!key) return [];
   try {
     const res = await fetch(`https://haveibeenpwned.com/api/v3/breaches?domain=${encodeURIComponent(domain)}`, {
-      headers: { "hibp-api-key": key, "user-agent": "PeriscopeBot/0.1" },
+      headers: { "hibp-api-key": key, "user-agent": "AltaiBot/0.1" },
     });
     if (!res.ok) return [];
     const list = (await res.json()) as Array<{ Name: string; BreachDate: string }>;
@@ -367,7 +367,7 @@ export async function intelxSearch(term: string): Promise<SourceContribution[]> 
   if (!key) return [];
   try {
     const res = await fetch(`https://2.intelx.io/intelligent/search?term=${encodeURIComponent(term)}`, {
-      headers: { "x-key": key, "user-agent": "PeriscopeBot/0.1" },
+      headers: { "x-key": key, "user-agent": "AltaiBot/0.1" },
     });
     if (!res.ok) return [];
     return [{ name: "IntelX", type: "breach_api", reliability: 0.55, observed_at: new Date().toISOString().slice(0, 10) }];
@@ -377,12 +377,12 @@ export async function intelxSearch(term: string): Promise<SourceContribution[]> 
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `pnpm --filter @periscope/tools test src/breach.test.ts`
+Run: `pnpm --filter @altai/tools test src/breach.test.ts`
 Expected: PASS (2 tests).
 
 - [ ] **Step 5: Typecheck the whole package**
 
-Run: `pnpm --filter @periscope/tools typecheck`
+Run: `pnpm --filter @altai/tools typecheck`
 Expected: passes (barrel `index.ts` now resolves all four modules).
 
 - [ ] **Step 6: Commit**
@@ -403,7 +403,7 @@ git commit -m "feat(tools): breach/OSINT (HIBP/IntelX) + deterministic hero pinn
 
 ```json
 {
-  "name": "@periscope/agents",
+  "name": "@altai/agents",
   "version": "0.0.0",
   "type": "module",
   "main": "./src/index.ts",
@@ -411,9 +411,9 @@ git commit -m "feat(tools): breach/OSINT (HIBP/IntelX) + deterministic hero pinn
   "exports": { ".": "./src/index.ts" },
   "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit" },
   "dependencies": {
-    "@periscope/contracts": "workspace:*",
-    "@periscope/fixtures": "workspace:*",
-    "@periscope/tools": "workspace:*",
+    "@altai/contracts": "workspace:*",
+    "@altai/fixtures": "workspace:*",
+    "@altai/tools": "workspace:*",
     "ai": "^5.0.0",
     "@ai-sdk/openai": "^1.0.0",
     "zod": "^3.23.0"
@@ -448,7 +448,7 @@ export const fastModel = () => openai(process.env.OPENAI_MODEL_FAST ?? "");
 - [ ] **Step 4: Create `packages/agents/src/trace.ts`**
 
 ```ts
-import type { TraceEvent } from "@periscope/contracts";
+import type { TraceEvent } from "@altai/contracts";
 
 export type TraceSink = (ev: TraceEvent) => void;
 
@@ -470,8 +470,8 @@ export type Trace = ReturnType<typeof tracer>;
 ```ts
 import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
-import type { SourceContribution } from "@periscope/contracts";
-import { fetchUrl, ahmiaSearch, torFetch, getExitIp, hibpLookup, intelxSearch, heroSourcesFor } from "@periscope/tools";
+import type { SourceContribution } from "@altai/contracts";
+import { fetchUrl, ahmiaSearch, torFetch, getExitIp, hibpLookup, intelxSearch, heroSourcesFor } from "@altai/tools";
 import { fastModel } from "./provider";
 import type { Trace } from "./trace";
 
@@ -551,7 +551,7 @@ export * from "./trace";
 
 - [ ] **Step 7: Install + typecheck (planner added next task; comment its export if needed, then restore)**
 
-Run: `pnpm install && pnpm --filter @periscope/agents typecheck`
+Run: `pnpm install && pnpm --filter @altai/agents typecheck`
 Expected: passes once `planner.ts` exists (Task 6). If typecheck runs before Task 6, temporarily comment the `./planner` export.
 
 - [ ] **Step 8: Commit**
@@ -573,7 +573,7 @@ git commit -m "feat(agents): scaffold + provider + trace helper + Web/Tor/Breach
 
 ```ts
 import { describe, it, expect, vi } from "vitest";
-import { SignalSchema } from "@periscope/contracts";
+import { SignalSchema } from "@altai/contracts";
 
 // Mock the scouts so the test is deterministic and offline.
 vi.mock("./scouts", () => ({
@@ -601,14 +601,14 @@ describe("synthesizeSignal (hero pinning)", () => {
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `pnpm --filter @periscope/agents test src/planner.test.ts`
+Run: `pnpm --filter @altai/agents test src/planner.test.ts`
 Expected: FAIL — `synthesizeSignal` not exported.
 
 - [ ] **Step 3: Implement `packages/agents/src/planner.ts`**
 
 ```ts
-import type { Mission, Signal, SourceContribution } from "@periscope/contracts";
-import { heroCase, heroSignal, fuseConfidence } from "@periscope/fixtures";
+import type { Mission, Signal, SourceContribution } from "@altai/contracts";
+import { heroCase, heroSignal, fuseConfidence } from "@altai/fixtures";
 import { webScout, torScout, breachScout } from "./scouts";
 import type { Trace } from "./trace";
 
@@ -651,12 +651,12 @@ export async function runSwarm(mission: Mission, trace: Trace): Promise<Signal> 
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `pnpm --filter @periscope/agents test src/planner.test.ts`
+Run: `pnpm --filter @altai/agents test src/planner.test.ts`
 Expected: PASS (1 test).
 
 - [ ] **Step 5: Full package typecheck**
 
-Run: `pnpm --filter @periscope/agents typecheck`
+Run: `pnpm --filter @altai/agents typecheck`
 Expected: passes.
 
 - [ ] **Step 6: Commit**
@@ -673,28 +673,28 @@ git commit -m "feat(agents): Planner runSwarm + synthesizeSignal with determinis
 **Files:**
 - Create: `apps/external/lib/realFleet.ts`, `apps/external/lib/fleet.ts`
 - Modify: `apps/external/app/api/missions/route.ts`
-- Modify: `apps/external/package.json` (add `@periscope/agents`, `@periscope/tools` deps), `apps/external/next.config.mjs` (transpile new packages)
+- Modify: `apps/external/package.json` (add `@altai/agents`, `@altai/tools` deps), `apps/external/next.config.mjs` (transpile new packages)
 
 - [ ] **Step 1: Add deps to `apps/external/package.json`**
 
-Add to `dependencies`: `"@periscope/agents": "workspace:*"`, `"@periscope/tools": "workspace:*"`. Then run `pnpm install`.
+Add to `dependencies`: `"@altai/agents": "workspace:*"`, `"@altai/tools": "workspace:*"`. Then run `pnpm install`.
 
 - [ ] **Step 2: Add the new packages to `apps/external/next.config.mjs` transpile list**
 
-Modify the `transpilePackages` array to include `"@periscope/agents"` and `"@periscope/tools"` alongside the existing entries. Keep the `rewrites()` from Phase 0 intact.
+Modify the `transpilePackages` array to include `"@altai/agents"` and `"@altai/tools"` alongside the existing entries. Keep the `rewrites()` from Phase 0 intact.
 
 - [ ] **Step 3: Create `apps/external/lib/realFleet.ts`**
 
 ```ts
-import type { Mission } from "@periscope/contracts";
-import { runSwarm, tracer } from "@periscope/agents";
+import type { Mission } from "@altai/contracts";
+import { runSwarm, tracer } from "@altai/agents";
 import { completeMission, emitTrace } from "./missionStore";
 
 export async function runRealFleet(mission: Mission): Promise<void> {
   const trace = tracer(mission.id, emitTrace);
   trace("dispatch", "Gateway", "info", "Mission received via sealed egress");
   trace("policy", "PolicyAgent", "success", "Mission within tenant policy (osint_readonly)");
-  trace("identity", "IdentityIsolation", "info", "Client identity stripped; acting under Periscope egress");
+  trace("identity", "IdentityIsolation", "info", "Client identity stripped; acting under Altai egress");
   try {
     const signal = await runSwarm(mission, trace);
     trace("membrane", "Sanitizer", "success", "PII/secret/malware stripped");
@@ -711,7 +711,7 @@ export async function runRealFleet(mission: Mission): Promise<void> {
 - [ ] **Step 4: Create `apps/external/lib/fleet.ts` (flag-based selector + safety fallback)**
 
 ```ts
-import type { Mission } from "@periscope/contracts";
+import type { Mission } from "@altai/contracts";
 import { runFakeFleet } from "./fakeFleet";
 import { runRealFleet } from "./realFleet";
 
@@ -735,7 +735,7 @@ export async function runFleet(mission: Mission): Promise<void> {
 
 - [ ] **Step 6: Typecheck**
 
-Run: `pnpm --filter @periscope/external typecheck`
+Run: `pnpm --filter @altai/external typecheck`
 Expected: passes.
 
 - [ ] **Step 7: Commit**

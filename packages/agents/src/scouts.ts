@@ -1,6 +1,6 @@
 import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
-import type { SourceContribution } from "@periscope/contracts";
+import type { SourceContribution } from "@altai/contracts";
 import {
   fetchUrl,
   ahmiaSearch,
@@ -9,7 +9,7 @@ import {
   hibpLookup,
   intelxSearch,
   heroSourcesFor,
-} from "@periscope/tools";
+} from "@altai/tools";
 import { fastModel } from "./provider";
 import type { Trace } from "./trace";
 
@@ -59,7 +59,7 @@ export async function torScout(
 ): Promise<ScoutResult> {
   trace("execution", "TorScout", "action", "Establishing Tor circuit");
   const exit = await getExitIp();
-  if (exit.ip) trace("execution", "TorScout", "success", "Tor exit established", { exit_ip: exit.ip });
+  if (exit.ip) trace("execution", "TorScout", "success", "Tor exit established", { exit_ip: exit.ip, country: exit.country });
   else trace("execution", "TorScout", "warn", `Tor exit unavailable: ${exit.error}`);
 
   const sources: SourceContribution[] = [];
@@ -80,6 +80,7 @@ export async function torScout(
       trace("execution", "TorScout", "success", `Live .onion fetch OK (${r.status})`, {
         onion_url: hits[0].onion,
         exit_ip: exit.ip,
+        country: exit.country,
       });
     } else {
       trace("execution", "TorScout", "warn", `.onion fetch failed: ${r.error ?? r.status}`);

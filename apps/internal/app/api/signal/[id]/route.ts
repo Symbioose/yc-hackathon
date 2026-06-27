@@ -1,5 +1,5 @@
-import type { SignedBrief } from "@periscope/contracts";
-import { verifyBrief } from "@periscope/crypto";
+import type { SignedBrief } from "@altai/contracts";
+import { verifyBrief } from "@altai/crypto";
 
 const GATEWAY = process.env.EXTERNAL_URL ?? "http://localhost:3000";
 

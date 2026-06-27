@@ -1,5 +1,5 @@
-import type { SourceContribution } from "@periscope/contracts";
-import { heroCase } from "@periscope/fixtures";
+import type { SourceContribution } from "@altai/contracts";
+import { heroCase } from "@altai/fixtures";
 
 /** Hero pinning: for the demo ticker, return the verified fixture sources so the
  * final Signal is reproducible regardless of live API availability (spec §10). */
@@ -16,7 +16,7 @@ export async function hibpLookup(domain: string): Promise<SourceContribution[]> 
   if (!key) return [];
   try {
     const res = await fetch(`https://haveibeenpwned.com/api/v3/breaches?domain=${encodeURIComponent(domain)}`, {
-      headers: { "hibp-api-key": key, "user-agent": "PeriscopeBot/0.1" },
+      headers: { "hibp-api-key": key, "user-agent": "AltaiBot/0.1" },
     });
     if (!res.ok) return [];
     const list = (await res.json()) as Array<{ Name: string; BreachDate: string }>;
@@ -37,7 +37,7 @@ export async function intelxSearch(term: string): Promise<SourceContribution[]> 
   if (!key) return [];
   try {
     const res = await fetch(`https://2.intelx.io/intelligent/search?term=${encodeURIComponent(term)}`, {
-      headers: { "x-key": key, "user-agent": "PeriscopeBot/0.1" },
+      headers: { "x-key": key, "user-agent": "AltaiBot/0.1" },
     });
     if (!res.ok) return [];
     return [

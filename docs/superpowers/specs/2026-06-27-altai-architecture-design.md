@@ -1,4 +1,4 @@
-# Periscope — Architecture Design Spec
+# Altai — Architecture Design Spec
 
 > **Status:** Draft for review (v2) · **Date:** 2026-06-27 · **Event:** Paris Builds (Unaite × YC), 36h, track *Software for Agents*
 > **Scope of this doc:** the technical architecture we will build for the demo. Strategy/pitch live in the README; this is the engineering source of truth.
@@ -7,7 +7,7 @@
 
 ## 1. One-liner
 
-Periscope is the **sovereign external-action layer for air-gapped enterprise agents**. A sealed internal agent (no internet) dispatches a mission through a single audited egress; an isolated fleet of specialized AI agents acts on the outside world (open web, Tor, breach APIs); a **multi-agent security membrane** verifies and cryptographically attests everything that crosses back in; the firm gets a sanitized, sourced, **signed, tradeable** intelligence brief without ever touching the wire.
+Altai is the **sovereign external-action layer for air-gapped enterprise agents**. A sealed internal agent (no internet) dispatches a mission through a single audited egress; an isolated fleet of specialized AI agents acts on the outside world (open web, Tor, breach APIs); a **multi-agent security membrane** verifies and cryptographically attests everything that crosses back in; the firm gets a sanitized, sourced, **signed, tradeable** intelligence brief without ever touching the wire.
 
 ---
 
@@ -89,7 +89,7 @@ Periscope is the **sovereign external-action layer for air-gapped enterprise age
 The sealed agent is a real OpenAI agent (`OPENAI_MODEL_FAST`), but its LLM calls go through `external-app`'s `/api/onprem-llm` proxy — the only host it can reach. Consequences:
 - The internal container is on `internal:true` → **genuinely no internet** (`docker exec internal-app curl https://google.com` → timeout). Cage is real and demonstrable.
 - The **OpenAI API key lives only in `external-app`**, never in the sealed container → the firm's environment holds no credentials and has no wire access. Extra air-gap talking point.
-- Framing: the proxy is the "on-prem inference endpoint"; `dispatch` is the audited egress. The internal agent only ever talks to its local Periscope endpoint.
+- Framing: the proxy is the "on-prem inference endpoint"; `dispatch` is the audited egress. The internal agent only ever talks to its local Altai endpoint.
 - `fetch_url()`/`search_web()` tools attempt real outbound requests → fail at the network layer → the agent concludes it must `dispatch`.
 
 ---
@@ -231,7 +231,7 @@ Consensus: `cross = Sanitizer.pass && InjectionHunter.pass && (ComplianceAuditor
 
 ### 7.3 Cryptographic proof layer + tamper-demo
 - **Merkle ledger** (`packages/crypto`): every `AuditEntry` is a leaf; root recomputed on append; tamper-evident.
-- **Ed25519 signature**: Judge signs `canonical(signal)+audit_root`; sealed agent verifies → ✓ "untampered, from Periscope".
+- **Ed25519 signature**: Judge signs `canonical(signal)+audit_root`; sealed agent verifies → ✓ "untampered, from Altai".
 - **TAMPER-DEMO (cheap, huge wow):** an ops-center affordance to **edit one audit-log entry live** → recompute Merkle root → root no longer matches the signed root → **Ed25519 verification flips to RED** in ~10s. Proves "tamper-evident" in front of the judges. *(Demo-only control, clearly behind a "demo" toggle.)*
 
 ### 7.4 Multi-source confidence fusion (signal-engine credibility)
@@ -261,7 +261,7 @@ packages/
   tools/       tor-fetch · breach (HIBP/IntelX) · ahmia · backtest+alpha (yfinance)     [Dung]
   fixtures/    hero_case.json (Ticketmaster primary + Medibank secondary)              [Malena/Dung]
 docker-compose.yml
-docs/superpowers/specs/2026-06-27-periscope-architecture-design.md
+docs/superpowers/specs/2026-06-27-altai-architecture-design.md
 ```
 
 ---
@@ -269,7 +269,7 @@ docs/superpowers/specs/2026-06-27-periscope-architecture-design.md
 ## 9. Hero case (LOCKED)
 
 ### 9.1 Primary — Live Nation / Ticketmaster (LYV, NYSE) — chosen for indisputable credibility
-Mechanism is the cleanest fit for Periscope's thesis, and the timeline is **SEC-documented** (the 8-K itself states the dark-web sale date — nobody can argue against it):
+Mechanism is the cleanest fit for Altai's thesis, and the timeline is **SEC-documented** (the 8-K itself states the dark-web sale date — nobody can argue against it):
 
 - **2024-05-20** — Live Nation detects activity (internal, non-public).
 - **2024-05-27** — ShinyHunters lists **560M** customer records for sale on the dark web (BreachForums, $500k). → `observed_at`

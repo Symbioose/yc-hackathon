@@ -1,7 +1,7 @@
-import type { Mission, Signal, TraceEvent } from "@periscope/contracts";
-import { huntInjection, sanitize } from "@periscope/agents";
-import { buildLedger, merkleRoot, signBrief } from "@periscope/crypto";
-import { plantedInjection } from "@periscope/fixtures";
+import type { Mission, Signal, TraceEvent } from "@altai/contracts";
+import { huntInjection, sanitize } from "@altai/agents";
+import { buildLedger, merkleRoot, signBrief } from "@altai/crypto";
+import { plantedInjection } from "@altai/fixtures";
 import { emitTrace, getEvents, sealMission } from "./missionStore";
 
 /** Inbound Membrane (Injection Hunter + Sanitizer) + crypto attestation (Merkle + Ed25519),

@@ -20,19 +20,19 @@ importers:
 
   apps/external:
     dependencies:
-      '@periscope/agents':
+      '@altai/agents':
         specifier: workspace:*
         version: link:../../packages/agents
-      '@periscope/contracts':
+      '@altai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@periscope/crypto':
+      '@altai/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
-      '@periscope/fixtures':
+      '@altai/fixtures':
         specifier: workspace:*
         version: link:../../packages/fixtures
-      '@periscope/tools':
+      '@altai/tools':
         specifier: workspace:*
         version: link:../../packages/tools
       next:
@@ -60,10 +60,10 @@ importers:
 
   apps/internal:
     dependencies:
-      '@periscope/contracts':
+      '@altai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@periscope/crypto':
+      '@altai/crypto':
         specifier: workspace:*
         version: link:../../packages/crypto
       next:
@@ -94,13 +94,13 @@ importers:
       '@ai-sdk/openai':
         specifier: ^2.0.0
         version: 2.0.109(zod@3.25.76)
-      '@periscope/contracts':
+      '@altai/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@periscope/fixtures':
+      '@altai/fixtures':
         specifier: workspace:*
         version: link:../fixtures
-      '@periscope/tools':
+      '@altai/tools':
         specifier: workspace:*
         version: link:../tools
       ai:
@@ -132,7 +132,7 @@ importers:
 
   packages/crypto:
     dependencies:
-      '@periscope/contracts':
+      '@altai/contracts':
         specifier: workspace:*
         version: link:../contracts
     devDependencies:
@@ -145,7 +145,7 @@ importers:
 
   packages/fixtures:
     dependencies:
-      '@periscope/contracts':
+      '@altai/contracts':
         specifier: workspace:*
         version: link:../contracts
     devDependencies:
@@ -164,10 +164,10 @@ importers:
 
   packages/tools:
     dependencies:
-      '@periscope/contracts':
+      '@altai/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@periscope/fixtures':
+      '@altai/fixtures':
         specifier: workspace:*
         version: link:../fixtures
       fetch-socks:
