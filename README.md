@@ -44,18 +44,72 @@ Periscope = a controlled egress gateway + an isolated, specialized external agen
 
 ---
 
-## 🎬 The demo (60–90s) — this is what we rehearse
+## 🏗️ Architecture — the layers (this is the moat, not the proxy)
 
-Split screen: **LEFT** = sealed corporate env (internal agent, big "NO INTERNET / AIR-GAPPED" badge). **RIGHT** = the Periscope external fleet operating in the wild.
+Every mission crosses **6 layers**, and every action is logged. This is what makes Periscope *not* "a VM with Tor".
 
-1. **The sealed agent asks** → "Is issuer **X** (public company) compromised?" — and it **cannot reach out**. It can only `dispatch`.
-2. **Periscope raises the periscope** → on the right, the web-agent + Tor-agent fan out across real OSINT + a controlled breach source, live.
-3. **It finds a real signal** on a **real historical case** → credential dump posted on a forum **before** public disclosure.
-4. **Sanitized result crosses the wall** → *"X: credential dump detected [date], confidence 0.86, source [forum], J-12 before public disclosure. Full audit trail attached."*
-5. **The kicker — the backtest** → overlay the signal timestamp on X's stock chart → *"Periscope would have known 12 days before the market."*
-6. **Compliance close** → show the audit log: every external action scoped & recorded; the firm's identity never left the building.
+```
+  SEALED ENTERPRISE                        PERISCOPE                                 OUTSIDE WORLD
+ ┌──────────────────┐   dispatch()   ┌──────────────────────────────────────┐   ┌──────────────────┐
+ │  internal agent  │ ─────────────► │ 1. Dispatch (MCP)                    │   │  open web        │
+ │  (NO INTERNET)   │                │ 2. Policy & governance               │   │  blocked sites   │
+ │                  │                │ 3. Identity isolation                │ ► │  Tor / .onion    │
+ │  ◄───────────────│ ◄───────────── │ 4. Execution (agent fleet)           │   │  breach APIs     │
+ │  sourced brief   │  signal+audit  │ 5. Sanitization & classification     │   │  Telegram        │
+ └──────────────────┘                │ 6. Audit & attestation               │   └──────────────────┘
+                                      └──────────────────────────────────────┘
+```
+
+1. **Dispatch layer (MCP)** — the sealed agent's *only* egress. Tools: `dispatch`, `status`, `fetch_signal`. Nothing else in the runtime touches the outside.
+2. **Policy & governance layer** — per-tenant rules: source allow/deny-list, scope, data classes, spend caps, rate limits. Out-of-policy missions are rejected *before* execution.
+3. **Identity isolation layer** — the client's identity, IP and raw query **never leave Periscope**. External agents act under Periscope's own rotating identities/egress. The firm is never on the wire.
+4. **Execution layer** — the specialized, isolated agent fleet (below).
+5. **Sanitization & classification layer** — raw external payloads never enter the firm; results are extracted, PII/secret/malware-stripped, classified, returned as a structured brief.
+6. **Audit & attestation layer** — every action (which agent, which source, when, what was fetched) is immutably logged; exportable compliance report; *(roadmap)* cryptographic attestation via confidential compute (SGX).
+
+### 🛡️ Compliance agents (they enforce — this is why it's not a proxy)
+
+| Agent | Role |
+|---|---|
+| **Policy Agent** | Validates every mission against the tenant's policy *before* anything runs |
+| **Guardrail Agent** | Enforces **defensive / OSINT read-only** — blocks any attempt to transact, purchase or interact |
+| **Sanitization Agent** | Strips PII, secrets, malware and raw illicit content from results before they cross the wall |
+| **Audit Agent** | Records & signs every action into the immutable audit log; generates the compliance report |
+
+### 🔭 Research agents (the fleet that acts on the outside)
+
+| Agent | Role |
+|---|---|
+| **Web-research agent** | Open web + firewall-blocked sites (foreign press, sector forums, restricted sources) |
+| **Tor / dark-web agent** | Ahmia/IntelX discovery + a **real live Tor SOCKS fetch** of `.onion` |
+| **Data-API agent** | Breach data via HIBP / Dehashed / IntelX; optional Telegram (Telethon) |
+| **Signal agent** | Findings → structured `{entity, event, confidence, source, timestamp}` + backtest / lead-time |
+
+> **The one-line moat:** "We don't give your agent the internet. We give it a *governed, audited, identity-isolated* delegate that brings back a decision — and proves the firm never touched the wire."
+
+---
+
+## 🎬 The demo (60–90s) — engineered for the *wow*
+
+> **Rule of wow:** make the room *feel the cage* before they see the escape. Everything converges on **beat 4**.
+> **Rule of safety:** live = proof, cached = the hero signal. Pre-warm Tor circuits. Backup video ready.
+
+Split screen: **LEFT** = sealed corporate env. **RIGHT** = the Periscope fleet in the wild.
+
+1. **Prove the cage is real (tension)** → ask the sealed agent *"is issuer **X** compromised?"* → it **fails live**: `BLOCKED: egress denied by policy`, a `ping` that times out. *(Theatre: a real laptop in airplane mode / ethernet unplugged on the table = "this is the bank".)*
+2. **Dispatch → the fleet ignites (energy)** → on `dispatch`, the right pane explodes: specialized agents spawn, real-time logs stream, web-agent + Tor-agent fan out in parallel.
+3. **Prove it's really the dark web (credibility)** → fetch a real `.onion` **live**; show **your IP before (FR) vs via Tor (foreign exit node)** + the Tor circuit (3 relays). Nobody can call it fake.
+4. **THE HERO MOMENT — the signal lands on a REAL case (silence)** → fleet returns *"X: credential dump, posted [real date], forum [real], confidence 0.86."* Then overlay on the **real stock chart**: animate two vertical lines → *"This is when WE'd have known. This is when the market knew. **Twelve days.**"* The gap = the alpha; the stock craters −X%.
+5. **"Oh, it's bigger" (the turn)** → take a **live ticker from the room/judge** and run the mission for real. Proves it's not scripted. *(Fallback: a pre-loaded case + the backup video.)*
+6. **Compliance close (scary → moat)** → open the **audit log**: every action scoped & timestamped → *"and the firm's identity never touched the wire. Proof, right here."*
 
 > Killer line: *"Your agents are blind by design. Periscope gives them eyes — without opening the hull."*
+
+### ☠️ Wow-killers to ban
+- Latency (pre-warm Tor, pre-fetch the hero signal — never a 30s spinner live)
+- Walls of JSON (narrate the story, not the schema)
+- Narrating features instead of showing the cage → escape → gap → audit
+- A fake "Acme Corp" ticker — **real breach, real ticker, real price move only**
 
 ---
 
@@ -74,8 +128,9 @@ Split screen: **LEFT** = sealed corporate env (internal agent, big "NO INTERNET 
 | Layer | Choice |
 |---|---|
 | Sandbox-side | **MCP server** (`dispatch`, `status`, `fetch_signal`) + thin SDK; demo internal agent in a visibly sealed env |
-| Gateway/broker | Python (FastAPI) — policy, mission queue, full audit log, identity isolation |
-| External fleet | Isolated workers (VM/container, distinct egress); Tor via `tor` daemon → SOCKS5 `127.0.0.1:9050`; httpx/Playwright through it for `.onion` |
+| Gateway/broker | Python (FastAPI) — mission queue + orchestration of the 6 layers |
+| Compliance layers | Policy Agent (pre-exec validation) · Guardrail Agent (read-only enforcement) · Sanitization Agent (PII/secret/malware strip) · Audit Agent (immutable signed log + report) · identity isolation (rotating egress) |
+| Research fleet | Isolated workers (VM/container, distinct egress); web-agent + Tor-agent + data-API agent + signal agent; Tor via `tor` daemon → SOCKS5 `127.0.0.1:9050`; httpx/Playwright through it for `.onion` |
 | Collection | OSINT (web/RSS/blocked sites), Ahmia (clearnet `.onion` index), IntelX API, HIBP/Dehashed, optional Telegram (Telethon) |
 | Signal extraction | LLM → structured signal `{entity, event, confidence, source, timestamp}` |
 | Backtest | yfinance → signal timestamp vs price-move chart → lead-time |
@@ -101,10 +156,10 @@ Split screen: **LEFT** = sealed corporate env (internal agent, big "NO INTERNET 
 ## 📅 36-hour plan
 
 - **H0–4** — lock the demo company X (a real breach that leaked before disclosure) + live sources + demo script + ownership
-- **H4–14** — core engine: MCP `dispatch` from a sealed agent → gateway (policy + audit + identity isolation) → external worker (OSINT + controlled breach/Tor source)
-- **H14–24** — signal extraction + backtest overlay (signal vs stock chart) + split-screen UI
-- **H24–32** — rehearse 60–90s demo + backup video + pitch deck + lock QRT/trader design partner & exact paid mission
-- **H32–36** — 2–3 clean demo runs + audit-log export + polish + submit
+- **H4–14** — core: MCP `dispatch` from a sealed agent → gateway → **compliance layers** (Policy + Guardrail + identity isolation) → research fleet (OSINT + Tor SOCKS fetch)
+- **H14–24** — Sanitization + Audit agents (immutable log) + signal extraction + backtest overlay + split-screen UI (cage → fleet → gap → audit)
+- **H24–32** — rehearse the 6-beat demo + airplane-mode theatre + backup video + pitch deck + lock QRT/trader design partner & exact paid mission
+- **H32–36** — 2–3 clean demo runs + audit-log/compliance-report export + polish + submit
 
 ---
 
