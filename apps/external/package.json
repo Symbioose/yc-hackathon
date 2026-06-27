@@ -12,6 +12,7 @@
   "dependencies": {
     "@periscope/agents": "workspace:*",
     "@periscope/contracts": "workspace:*",
+    "@periscope/crypto": "workspace:*",
     "@periscope/fixtures": "workspace:*",
     "@periscope/tools": "workspace:*",
     "next": "^15.1.0",

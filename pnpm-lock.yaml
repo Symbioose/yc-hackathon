@@ -26,6 +26,9 @@ importers:
       '@periscope/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@periscope/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       '@periscope/fixtures':
         specifier: workspace:*
         version: link:../../packages/fixtures
@@ -60,6 +63,9 @@ importers:
       '@periscope/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@periscope/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
       next:
         specifier: ^15.1.0
         version: 15.5.19(@opentelemetry/api@1.9.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -116,6 +122,19 @@ importers:
       zod:
         specifier: ^3.23.0
         version: 3.25.76
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.0)
+
+  packages/crypto:
+    dependencies:
+      '@periscope/contracts':
+        specifier: workspace:*
+        version: link:../contracts
     devDependencies:
       typescript:
         specifier: ^5.7.0
