@@ -22,8 +22,12 @@ Altai closes that gap. A sealed internal agent **dispatches a mission** through 
 ## Table of contents
 
 - [Why Altai](#why-altai)
+- [Business model & pricing](#business-model--pricing)
+- [Go-to-market](#go-to-market)
+- [Differentiation & moat](#differentiation--moat)
 - [Architecture](#architecture)
 - [How it works (the six layers)](#how-it-works-the-six-layers)
+- [Agentic depth — a real multi-agent pipeline](#agentic-depth--a-real-multi-agent-pipeline)
 - [Honest results, by construction](#honest-results-by-construction)
 - [Agent deliverables (file generation)](#agent-deliverables-file-generation)
 - [Project structure](#project-structure)
@@ -42,6 +46,8 @@ Altai closes that gap. A sealed internal agent **dispatches a mission** through 
 
 ## Why Altai
 
+**Who feels it first:** event-driven & multi-strat hedge-fund desks. The smartest AI agent on the desk isn't allowed to open a web page — yet the signal that moves a stock (breach exposure, leaks, alt-data) lives *outside* the wall. Today's workaround is a human analyst who spends ~42% of their time just gathering data (APQC), and is still never first. **First mover takes the trade; everyone else reads the press release.** (Problem pressure-tested with quants at QRT.)
+
 | Problem | Today | With Altai |
 |---|---|---|
 | Internal agents are air-gapped by policy | They simply can't answer questions about the outside world | They dispatch a mission to a governed egress and get a structured answer back |
@@ -54,6 +60,36 @@ Altai is **not a proxy or a VPN**. The value is the governance and verification 
 ### Example use case
 
 Ask the sealed agent **any** question — a general one (*"who is the CEO of OpenAI?"*) or a security one (*"Has Ticketmaster been breached and is the data on the dark web?"*). Altai searches the open web, reads the real pages, and — for security/breach questions — also goes **live onto the dark web over Tor**; an Analyst then synthesizes a **cited** answer and signs it. If the sources don't contain the answer it says so — `inconclusive` at confidence 0, never fabricated. Every step (including the Tor exit IP + live `.onion` fetch) is in the signed audit log.
+
+---
+
+## Business model & pricing
+
+- **Who pays:** the PM / Head of Research on an event-driven or multi-strat desk — already running ~20 alt-data feeds at ~$1.6M/yr. Altai is the **on-demand** layer for the questions those fixed feeds can't answer.
+- **Land:** **€2,500 / yr per seat.** **Grow:** pay-per-investigation in **Intelligence Units**, metered like cloud compute (quick check ≈ 55 IU, full diligence ≈ 2,000 IU). Pilot credits for design partners; Enterprise & on-prem tiers on top.
+- **Margins compound (Search DNA):** every investigation records the route that worked; the next similar one reuses it → IU/investigation **2,000 → 1,200**, cost-to-fulfil **$900 → $350**, gross margin **55% → 80%**.
+
+## Go-to-market
+
+- **Beachhead:** 5–10 event-driven / multi-strat desks in London & Paris — the funds that live or die on being first to a credit event.
+- **Warm doors:** intros via a former Rothschild / hedge-fund analyst on the team + a CentraleSupélec Head of Special Projects. No cold outbound — we walk in known.
+- **Land motion:** 1 analyst seat (€2,500) + a paid pilot investigation pack per desk → a 3-desk design-partner cohort running real signed briefs their compliance can keep. **First €10–25K in weeks, not quarters.**
+- We don't sell data — we sell the **proof**: the signed ledger is what makes a dark-web signal *compliantly tradeable*. One brief that front-runs a disclosure pays the seat for years.
+
+## Differentiation & moat
+
+Each rival wins one lane; **nobody packages all six.**
+
+| Capability | **Altai** | Runlayer (agent control plane) | Recorded Future (dark-web intel) | AlphaSense (AI finance research) | Web-search APIs (Linkup/Exa/Tavily) |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Governed egress for **air-gapped agents** | ✓ | ~ | – | – | – |
+| Reaches **closed / dark-web** sources | ✓ | – | ✓ | – | – |
+| **Agent-native**, on-demand (no human analyst) | ✓ | ✓ | – | ~ | ✓ |
+| **Cryptographic signed provenance** | ✓ | – | – | – | – |
+| **Finance-grade tradeable signal** | ✓ | – | ~ | ✓ | – |
+| **Adversarial inbound membrane** | ✓ | ~ | – | – | – |
+
+The crypto is copyable in a weekend. The **compounding system** — Search DNA + per-regulator compliance trust + governed dark-source access — isn't. Runlayer governs what your agent can *touch*; Recorded Future feeds your *analysts*; Altai lets your **sealed agent ask the outside world a question and get back a signed, tradeable answer it can trust.**
 
 ---
 
@@ -162,6 +198,34 @@ sequenceDiagram
 
 ---
 
+## Agentic depth — a real multi-agent pipeline
+
+Not a prompt in a box. Every mission is run by a fleet of **named agents**, each with one job, coordinated end to end — and you can watch them work **live** in the ops-center trace and re-read every step in the signed audit ledger.
+
+| Agent | Where | Job |
+|---|---|---|
+| **Meridian Copilot** | sealed app | The desk agent. No internet. Decides **autonomously, turn by turn**, whether to call `altai_research` (gather), `altai_export` (turn a brief into a signed document), or answer from the conversation — and cites, or honestly says it can't. Real tool-calling via the AI SDK. |
+| **PolicyAgent** | gateway | Governs every mission at ingress: scope · allow/deny · spend cap → `403` on out-of-scope, before any execution. |
+| **IdentityIsolation** | gateway | Strips the client's identity / IP / raw query; the fleet acts under Altai's egress, never the firm's. |
+| **Planner** | gateway | Decomposes the question, refines it into a focused query, fans out the scouts **in parallel**, fuses the result. |
+| **WebScout** | gateway | Real keyless web search → reads the actual top pages. |
+| **TorScout** | gateway | Live dark-web hop over **Tor** — real exit IP + live `.onion` fetch, recorded in the ledger. |
+| **BreachScout** | gateway | HIBP / IntelX breach corroboration. |
+| **Analyst** | gateway | Synthesizes a **cited** answer grounded *only* in what was fetched. |
+| **InjectionHunter** | gateway | Scans the **real fetched bytes** for prompt-injection / identity-exfil; quarantines on hit. |
+| **Sanitizer** | gateway | Scrubs every field of the brief before it is signed. |
+| **Judge** | gateway | Requires a clean membrane pass, then signs the brief (Ed25519). |
+| **AuditAgent** | gateway | Hash-chains every action into the Merkle ledger. |
+
+**How it maps to the bar (judge by proof):**
+
+- **Genuine multi-step autonomy** — the sealed Copilot picks tools turn by turn (research vs export vs answer-from-context, with conversation memory), and the gateway runs a **decompose → act → verify → sign** loop across the fleet above. Real tool-calling, not a scripted sequence.
+- **Robust tool use** — real tools, not stubs: web search, page fetch, **Tor SOCKS5**, Ahmia `.onion`, HIBP/IntelX — plus the **MCP** tool surface (`dispatch_research_mission` · `get_mission_status` · `fetch_signal` · `export_brief_document`) so *any* MCP-capable agent drives the exact same governed pipeline.
+- **Recovers from failure / edge cases** — search falls through **DuckDuckGo → DDG-Lite → Bing**; bot-blocked / JS-rendered pages are recovered via a **render-proxy fallback**; no data → **honest `inconclusive` @ 0**; unsafe intent → **policy `403`**; missing API keys → graceful degradation; long runs are bounded with a backed-off audit fetch.
+- **Defensible beyond the base model** — **Ed25519 + Merkle** provenance (offline-verifiable), **real Tor egress** + identity isolation, an on-prem **LLM proxy** so the model key never enters the sealed side, an adversarial **membrane**, and **Search DNA** (roadmap) that compounds route-reuse into a widening moat.
+
+---
+
 ## Honest results, by construction
 
 Altai never fabricates a finding. The answer is built **only** from what was actually fetched:
@@ -256,9 +320,9 @@ altai/
 │   │   ├── app/api/         missions · events (SSE) · signal · audit · tamper · export · verify · health
 │   │   ├── app/page.tsx     Ops-center: live trace, signal card, deliverables, audit ledger, verify
 │   │   └── lib/             gateway orchestration, mission store, fleet, policy, membrane+seal
-│   ├── internal/            Sealed enterprise app (served under /bank)
-│   │   ├── app/page.tsx     Sealed research form → dispatch via MCP → signed brief + audit
-│   │   └── app/api/         research (drives the MCP tools; its only egress)
+│   ├── internal/            Sealed enterprise terminal (served under /bank)
+│   │   ├── app/page.tsx     Meridian Copilot chat — real tool-calling (AI SDK): altai_research + altai_export
+│   │   └── app/api/         chat (the copilot agent loop) · export (signed documents) — its only egress is the gateway
 │   └── research-mcp/        Thin MCP adapter — exposes dispatch/status/fetch/export as MCP tools → forwards to the gateway
 ├── packages/
 │   ├── contracts/           Zod schemas: Mission · Signal · SourceContribution · AuditEntry · SignedBrief · TraceEvent
@@ -268,8 +332,7 @@ altai/
 │   ├── tools/               web search + fetch · Tor SOCKS5 fetch · Ahmia · HIBP/IntelX
 │   └── fixtures/            noisy-OR confidence fusion
 ├── docker-compose.yml       two networks (internal=true, external) — the cage
-├── turbo.json               build/dev/test/typecheck pipeline
-└── docs/superpowers/        architecture spec + phase plans
+└── turbo.json               build/dev/test/typecheck pipeline
 ```
 
 ---
@@ -355,9 +418,9 @@ pnpm typecheck    # typecheck the whole workspace
 The whole story, end to end (set `OPENAI_API_KEY` for the synthesized answer).
 
 1. **The cage is real.** `docker compose exec internal-app curl https://google.com` times out; the same container reaches `external-app:3000/api/health`. The sealed side holds no keys and has no wire.
-2. **A governed dark-web mission.** Open the sealed app at `/bank`, ask *"Has Ticketmaster been breached and is the data on the dark web?"*. The ops-center lights up: policy ✓ → identity stripped → query refined → Web Scout reads real press → **Tor Scout establishes a circuit, reports a live exit IP, and does a live `.onion` fetch of the dark-web index** → the Analyst writes a **cited** answer → **Judge signs** → **Merkle ledger** seals. Expand **Audit log** to see the `🧅 Tor exit … / Live .onion fetch OK (200)` lines **inside the signed ledger**. Click **⚠ TAMPER** → the recomputed root turns red while the signature stays valid.
+2. **A governed dark-web mission.** Open the sealed terminal at `/bank` and ask **Meridian Copilot** *"Has Ticketmaster been breached and is the data on the dark web?"* — it can't browse, so it calls its **`altai_research`** tool. The ops-center lights up: policy ✓ → identity stripped → query refined → Web Scout reads real press → **Tor Scout establishes a circuit, reports a live exit IP, and does a live `.onion` fetch of the dark-web index** → the Analyst writes a **cited** answer → **Judge signs** → **Merkle ledger** seals. Expand **Audit log** to see the `🧅 Tor exit … / Live .onion fetch OK (200)` lines **inside the signed ledger**. Click **⚠ TAMPER** → the recomputed root turns red while the signature stays valid.
 3. **It answers anything.** Ask *"who is the president of France?"* → a cited answer (elysee.fr, Wikipedia), web-only, no Tor. Ask a nonsense question → **`inconclusive` at confidence 0** — it reports reality, never invents.
-4. **Agent deliverables.** From the SIGNAL card, download the brief as **Excel**, **CSV**, **Markdown**, **JSON**, or a **STIX 2.1** bundle — each carrying the Ed25519 provenance.
+4. **The agent makes documents.** Ask the copilot *"generate an Excel report of this finding"* → it calls **`altai_export`** and hands back a downloadable, Ed25519-signed **.xlsx** (or CSV · Markdown · JSON · STIX 2.1) built from the real brief. The same files are one-click on the ops-center SIGNAL card.
 5. **Don't trust — verify.** Drop that `brief.json` onto the **VERIFY A BRIEF** zone → ✓ AUTHENTIC. Open it, change one value, drop it again → ✗ FORGED. The proof is in the file.
 6. **Any agent can do this.** The sealed app drives the same pipeline through the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission) — dispatch → status → fetch_signal — and gets back the identical signed brief.
 
