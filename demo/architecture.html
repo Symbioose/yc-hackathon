@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Altai — Architecture</title>
+<style>
+  :root{ --bg:#060a12; --ink:#d6e0f2; --dim:#8a98b5; --cyan:#38d0ff; --line:#1a2740;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 700px at 12% -10%,#0c1830 0%,transparent 60%),
+      radial-gradient(1000px 700px at 115% 120%,#160f2c 0%,transparent 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--sans); -webkit-font-smoothing:antialiased;
+    padding:28px 26px 60px; min-height:100vh;
+  }
+  .wrap{max-width:1000px;margin:0 auto}
+  header{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:8px}
+  header b{font-family:var(--mono);font-size:24px;letter-spacing:3px;color:var(--cyan);text-shadow:0 0 22px rgba(56,208,255,.45)}
+  header span{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--dim)}
+  h2{font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--dim);margin:34px 0 6px;font-weight:600}
+  .diagram{display:flex;justify-content:center;margin-top:10px}
+  .diagram svg{max-width:100%;height:auto}
+  .err{font-family:var(--mono);font-size:12px;color:#ff6079;white-space:pre-wrap;border:1px solid #3a1620;background:#1a0e12;border-radius:8px;padding:14px}
+  .hint{font-family:var(--mono);font-size:10px;color:#5a6783;margin-top:34px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><b>ALTAI</b><span>ARCHITECTURE &amp; SECURITY LAYERS</span></header>
+
+  <div id="arch" class="diagram"></div>
+
+  <h2>SECURITY MODEL — DEFENSE IN DEPTH (NOT A PROXY)</h2>
+  <div id="sec" class="diagram"></div>
+
+  <div class="hint">offline render · press F11 for fullscreen · Cmd+P → Save as PDF for a slide</div>
+</div>
+
+<script src="./mermaid.min.js"></script>
+<script>
+  const arch = `flowchart TB
+  subgraph SEALED["🔒 SEALED ENVIRONMENT · no route to the internet"]
+    direction TB
+    AGENT["Meridian Copilot · internal agent<br/>holds NO keys · cannot browse · only egress = altai_research"]
+    VERIFY["✓ Verify brief OFFLINE — Ed25519 vs embedded public key"]
+  end
+
+  MCP["MCP adapter · research-mcp — forwards every call to the gateway"]
+
+  subgraph GW["🛰️ ALTAI GATEWAY · the one audited door"]
+    direction TB
+    L1["1 · Dispatch — sole ingress · Mission contract"]
+    L2["2 · Policy — scope · allow/deny · spend cap → 403"]
+    L3["3 · Identity isolation — client identity / IP / query stripped"]
+    L4["4 · Execution — Planner → Web · Tor · Breach scouts → Analyst (cited)"]
+    L5["5 · Membrane — Injection Hunter · Sanitizer · Judge"]
+    L6["6 · Audit — Merkle ledger + Ed25519 signature"]
+    PROXY["on-prem LLM proxy · API key never leaves the gateway"]
+    L1 --> L2 --> L3 --> L4 --> L5 --> L6
+  end
+
+  subgraph OUT["🌐 OUTSIDE WORLD · internet + Tor"]
+    direction TB
+    WEB["Open + firewall-blocked web"]
+    TOR["Tor SOCKS5 → .onion · dark web"]
+    BREACH["Breach APIs · HIBP / IntelX"]
+    WEB ~~~ TOR ~~~ BREACH
+  end
+
+  DNA[("Search DNA · learning store (roadmap)<br/>records the winning route → reused · cheaper")]
+
+  AGENT -->|"dispatch · the only hole in the wall"| MCP
+  MCP --> L1
+  L4 --> OUT
+  L6 ==>|"SignedBrief · signed · sourced"| VERIFY
+  AGENT -. "LLM · key stays in gateway" .-> PROXY
+  DNA -. "reuse route" .-> L4
+  L6 -. "record route" .-> DNA
+
+  classDef sealed fill:#13203a,stroke:#33425f,color:#cdd9f2;
+  classDef gw fill:#0a1322,stroke:#38d0ff,color:#cdd9f2;
+  classDef out fill:#140e26,stroke:#b596ff,color:#cdd9f2;
+  classDef mcp fill:#0a1322,stroke:#54e8a0,color:#cdd9f2;
+  classDef proxy fill:#1a1530,stroke:#ffc857,color:#f0e6cf;
+  classDef dna fill:#0e1c14,stroke:#54e8a0,color:#cfeede,stroke-dasharray:5 4;
+  class AGENT,VERIFY sealed
+  class L1,L2,L3,L4,L5,L6 gw
+  class WEB,TOR,BREACH out
+  class MCP mcp
+  class PROXY proxy
+  class DNA dna`;
+
+  const sec = `flowchart TB
+  A["🧱 Network air-gap — no route to the internet"]
+  B["🚪 Single governed egress — dispatch is the only hole"]
+  C["🛡️ Policy at ingress — scope · allowlist · spend · 403"]
+  D["🥷 Identity isolation — the firm is never on the wire"]
+  E["🧬 Adversarial membrane — de-inject · sanitize before signing"]
+  F["✍️ Signed provenance — Ed25519 + Merkle · verifiable offline"]
+  G["🔑 Key custody — keys only on the gateway"]
+  A --> B --> C --> D --> E --> F --> G
+  classDef s fill:#0a1322,stroke:#38d0ff,color:#cdd9f2;
+  class A,B,C,D,E,F,G s;`;
+
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: "dark",
+    securityLevel: "loose",
+    flowchart: { curve: "basis", useMaxWidth: true, htmlLabels: true, nodeSpacing: 42, rankSpacing: 50 },
+    themeVariables: { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: "16px" },
+  });
+
+  async function draw(id, def) {
+    try {
+      const { svg } = await mermaid.render(id + "-svg", def);
+      document.getElementById(id).innerHTML = svg;
+    } catch (e) {
+      document.getElementById(id).innerHTML =
+        '<div class="err">Mermaid render error:\n' + (e && e.message ? e.message : String(e)) + "</div>";
+    }
+  }
+  (async () => { await draw("arch", arch); await draw("sec", sec); })();
+</script>
+</body>
+</html>
