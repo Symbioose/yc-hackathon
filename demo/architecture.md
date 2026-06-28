@@ -6,43 +6,43 @@ touches the wire.
 
 ```mermaid
 flowchart TB
-  subgraph SEALED["🔒 SEALED ENVIRONMENT · no route to the internet"]
+  subgraph SEALED["🔒 SEALED ENVIRONMENT · no internet"]
     direction TB
-    AGENT["Meridian Copilot · internal agent<br/>holds NO keys · cannot browse · only egress = altai_research"]
-    VERIFY["✓ Verify brief OFFLINE — Ed25519 vs embedded public key"]
+    AGENT["Meridian Copilot · sealed agent<br/>no keys · only egress = altai_research"]
+    VERIFY["✓ Verify brief offline · Ed25519"]
   end
 
-  MCP["MCP adapter · research-mcp — forwards every call to the gateway"]
+  MCP["MCP adapter → gateway"]
 
   subgraph GW["🛰️ ALTAI GATEWAY · the one audited door"]
     direction TB
-    L1["1 · Dispatch — sole ingress · Mission contract"]
-    L2["2 · Policy — scope · allow/deny · spend cap → 403"]
-    L3["3 · Identity isolation — client identity / IP / query stripped"]
-    L4["4 · Execution — Planner → Web · Tor · Breach scouts → Analyst (cited)"]
-    L5["5 · Membrane — Injection Hunter · Sanitizer · Judge"]
-    L6["6 · Audit — Merkle ledger + Ed25519 signature"]
-    PROXY["on-prem LLM proxy · API key never leaves the gateway"]
+    L1["1 · Dispatch"]
+    L2["2 · Policy · scope · spend · 403"]
+    L3["3 · Identity isolation"]
+    L4["4 · Execution · Web · Tor · Breach → Analyst"]
+    L5["5 · Membrane · de-inject · sanitize · sign"]
+    L6["6 · Audit · Merkle + Ed25519"]
+    PROXY["on-prem LLM proxy · key stays"]
     L1 --> L2 --> L3 --> L4 --> L5 --> L6
   end
 
-  subgraph OUT["🌐 OUTSIDE WORLD · internet + Tor"]
+  subgraph OUT["🌐 OUTSIDE · internet + Tor"]
     direction TB
-    WEB["Open + firewall-blocked web"]
-    TOR["Tor SOCKS5 → .onion · dark web"]
+    WEB["Open + blocked web"]
+    TOR["Tor → .onion · dark web"]
     BREACH["Breach APIs · HIBP / IntelX"]
     WEB ~~~ TOR ~~~ BREACH
   end
 
-  DNA[("Search DNA · learning store (roadmap)<br/>records the winning route → reused · cheaper")]
+  DNA[("Search DNA · roadmap<br/>reuse winning route · cheaper")]
 
-  AGENT -->|"dispatch · the only hole in the wall"| MCP
+  AGENT -->|"dispatch · only hole in the wall"| MCP
   MCP --> L1
   L4 --> OUT
-  L6 ==>|"SignedBrief · signed · sourced"| VERIFY
-  AGENT -. "LLM · key stays in gateway" .-> PROXY
-  DNA -. "reuse route" .-> L4
-  L6 -. "record route" .-> DNA
+  L6 ==>|"SignedBrief · signed"| VERIFY
+  AGENT -. "LLM · key stays" .-> PROXY
+  DNA -. reuse .-> L4
+  L6 -. record .-> DNA
 
   classDef sealed fill:#13203a,stroke:#33425f,color:#cdd9f2;
   classDef gw fill:#0a1322,stroke:#38d0ff,color:#cdd9f2;
