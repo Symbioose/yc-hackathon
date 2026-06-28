@@ -35,9 +35,6 @@ importers:
       '@altai/fixtures':
         specifier: workspace:*
         version: link:../../packages/fixtures
-      '@altai/memory':
-        specifier: workspace:*
-        version: link:../../packages/memory
       '@altai/tools':
         specifier: workspace:*
         version: link:../../packages/tools
@@ -140,9 +137,6 @@ importers:
       '@altai/fixtures':
         specifier: workspace:*
         version: link:../fixtures
-      '@altai/memory':
-        specifier: workspace:*
-        version: link:../memory
       '@altai/tools':
         specifier: workspace:*
         version: link:../tools
@@ -220,22 +214,6 @@ importers:
       yahoo-finance2:
         specifier: ^2.13.0
         version: 2.14.2
-
-  packages/memory:
-    dependencies:
-      '@altai/contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      zod:
-        specifier: ^3.23.0
-        version: 3.25.76
-    devDependencies:
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      vitest:
-        specifier: ^2.1.0
-        version: 2.1.9(@types/node@22.20.0)
 
   packages/tools:
     dependencies:

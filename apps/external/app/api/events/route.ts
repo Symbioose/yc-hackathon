@@ -1,4 +1,4 @@
-import { bus, getLastMemoryReport } from "@/lib/missionStore";
+import { bus } from "@/lib/missionStore";
 
 export const dynamic = "force-dynamic";
 
@@ -6,7 +6,6 @@ export function GET() {
   const encoder = new TextEncoder();
   let onTrace: (ev: unknown) => void = () => {};
   let onSignal: (s: unknown) => void = () => {};
-  let onMemory: (r: unknown) => void = () => {};
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let closed = false;
   // Hoisted so cancel() can tear down the same listeners start() registered.
@@ -20,7 +19,6 @@ export function GET() {
         if (heartbeat) clearInterval(heartbeat);
         bus.off("trace", onTrace);
         bus.off("signal", onSignal);
-        bus.off("memory", onMemory);
       };
       const send = (event: string, data: unknown) => {
         if (closed) return;
@@ -32,17 +30,11 @@ export function GET() {
       };
 
       send("ready", { ok: true });
-      // Replay the latest Intelligence Network snapshot so a fresh client immediately
-      // sees the trained network, not an empty panel.
-      const last = getLastMemoryReport();
-      if (last) send("memory", last);
 
       onTrace = (ev) => send("trace", ev);
       onSignal = (s) => send("signal", s);
-      onMemory = (r) => send("memory", r);
       bus.on("trace", onTrace);
       bus.on("signal", onSignal);
-      bus.on("memory", onMemory);
 
       // Keep the connection alive through proxies/timeouts (comment frames are ignored by EventSource).
       heartbeat = setInterval(() => {

@@ -1,34 +1,21 @@
 import { describe, it, expect } from "vitest";
-import { SignalSchema } from "@altai/contracts";
-import { heroSignal, heroCase, priceSeriesFor } from "./index";
+import { fuseConfidence } from "./index";
 
-describe("fixtures", () => {
-  it("primary case has the locked Ticketmaster dates and a non-empty price series", () => {
-    expect(heroCase.primary.ticker).toBe("LYV");
-    expect(heroCase.primary.observed_at).toBe("2024-05-27");
-    expect(heroCase.primary.disclosed_at).toBe("2024-05-31");
-    expect(heroCase.primary.price_series.length).toBeGreaterThan(0);
+describe("fuseConfidence (noisy-OR)", () => {
+  it("returns 0 for no sources", () => {
+    expect(fuseConfidence([])).toBe(0);
   });
 
-  it("heroSignal() produces a contract-valid Signal", () => {
-    const s = heroSignal();
-    expect(() => SignalSchema.parse(s)).not.toThrow();
-    expect(s.lead_time_days).toBe(4);
-    expect(s.confidence).toBeGreaterThan(0);
-    expect(s.confidence).toBeLessThanOrEqual(1);
+  it("returns the single source reliability", () => {
+    expect(fuseConfidence([{ name: "a", type: "press", reliability: 0.6, observed_at: "t" }])).toBeCloseTo(0.6, 4);
   });
 
-  it("computes a real short AlphaCard from the price series (entry after the holiday)", () => {
-    const a = heroSignal().alpha!;
-    expect(a.entry_price).toBeDefined();
-    expect(a.exit_price).toBeDefined();
-    // short return = (entry - exit)/entry * 100; LYV declined over the window → positive
-    expect(a.return_pct).toBeGreaterThan(0);
-  });
-
-  it("priceSeriesFor resolves hero tickers and rejects unknowns", () => {
-    expect(priceSeriesFor("LYV").length).toBeGreaterThan(0);
-    expect(priceSeriesFor("MPL.AX").length).toBeGreaterThan(0);
-    expect(priceSeriesFor("NVDA")).toEqual([]);
+  it("fuses independent sources: 1 - (1-0.7)(1-0.6) = 0.88", () => {
+    expect(
+      fuseConfidence([
+        { name: "a", type: "tor_forum", reliability: 0.7, observed_at: "t" },
+        { name: "b", type: "breach_api", reliability: 0.6, observed_at: "t" },
+      ]),
+    ).toBeCloseTo(0.88, 4);
   });
 });

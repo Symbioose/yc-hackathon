@@ -482,31 +482,6 @@ export class Scene {
     for (let i = 0; i < 3; i++) setTimeout(() => { this.spark(node.x, node.y, SCOUT[k].accent, 4, 30); sfx.blip(); }, i * 260);
   }
 
-  // Intelligence Network: the recalled route lights up FIRST — glowing connectors
-  // from the hub to the scout nodes the memory said to query, before they deploy.
-  recallRoute(route: string[]) {
-    const SRC_TO_SCOUT: Record<string, ScoutKind> = {
-      tor_forum: "tor", breach_api: "breach", paste: "web", press: "web", filing: "web",
-    };
-    const kinds = [...new Set(route.map((s) => SRC_TO_SCOUT[s]).filter(Boolean))] as ScoutKind[];
-    if (!kinds.length) return;
-    this.setStatus("INTELLIGENCE NETWORK · ROUTE RECALLED", C.green);
-    sfx.loot();
-    this.floatText("RECALLED ROUTE", L.hub.x, L.hub.y - 92, C.green, 11);
-    gsap.to(this.hubRing, { alpha: 1, duration: 0.3, yoyo: true, repeat: 3 });
-    kinds.forEach((k, i) => {
-      const node = SCOUT[k].node;
-      const line = new Graphics().moveTo(L.hub.x, L.hub.y).lineTo(node.x, node.y).stroke({ width: 4, color: C.green, alpha: 0.9 });
-      this.fxLayer.addChild(line);
-      gsap.fromTo(line, { alpha: 0 }, {
-        alpha: 0.9, duration: 0.3, delay: i * 0.18, yoyo: true, repeat: 3,
-        onComplete: () => gsap.to(line, { alpha: 0, duration: 0.4, onComplete: () => line.destroy() }),
-      });
-      gsap.to(this.nodes[k].scale, { x: 1.16, y: 1.16, duration: 0.3, delay: i * 0.18, yoyo: true, repeat: 3, ease: "sine.inOut" });
-      setTimeout(() => this.spark(node.x, node.y, C.green, 8, 42), i * 180);
-    });
-  }
-
   // tor reports its exit ip + country (from real TraceEvent meta)
   torExit(ip: string, country?: string) {
     const tt = (this.torTag as Container & { _txt?: Text })._txt;

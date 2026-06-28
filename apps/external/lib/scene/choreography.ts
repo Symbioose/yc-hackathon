@@ -117,14 +117,6 @@ export class Choreographer {
       case "audit":
         this.enqueue(() => this.scene.buildChain(), 1800);
         break;
-
-      case "memory":
-        // The warm-start recall: light up the learned route before the scouts deploy.
-        if (ev.level === "action" && ev.meta && Array.isArray(ev.meta.route)) {
-          const route = (ev.meta.route as unknown[]).filter((s): s is string => typeof s === "string");
-          this.enqueue(() => this.scene.recallRoute(route), 1500);
-        }
-        break;
     }
   }
 }

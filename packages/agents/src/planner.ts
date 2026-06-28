@@ -1,9 +1,9 @@
-import type { Mission, Signal, SourceContribution, MemoryRecall } from "@altai/contracts";
+import type { Mission, Signal, SourceContribution } from "@altai/contracts";
 import { fuseConfidence } from "@altai/fixtures";
-import { scoutsForRoute, type ScoutKind } from "@altai/memory";
 import { webScout, torScout, breachScout, type Snippet } from "./scouts";
 import type { Trace } from "./trace";
 
+type ScoutKind = "web" | "tor" | "breach";
 const SCOUT_LABEL: Record<ScoutKind, string> = { web: "Web", tor: "Tor", breach: "Breach" };
 
 /** Build the final Signal from the sources the scouts actually corroborated.
@@ -39,36 +39,16 @@ export function synthesizeSignal(
   };
 }
 
-/** Run the full swarm: warm-start from memory → plan → scouts (parallel) → synthesize.
- * Emits TraceEvents and returns the candidate signal plus every fetched snippet, so the
- * membrane can scan the ACTUAL retrieved content for injection before signing.
- *
- * The Intelligence Network supplies an optional `recall`: the route that worked on similar
- * past missions. We use it as a PRIOR to order the scouts (recalled ones first) and to make
- * the learning visible — but a real mission always runs every scout for full coverage. The
- * cost savings of a warmed route are demonstrated in the deterministic demo, never by
- * crippling a live investigation. Backward-compatible: with no recall it explores all three. */
+/** Run the swarm: plan → scouts (parallel) → synthesize. Emits TraceEvents and returns the
+ * candidate signal plus every fetched snippet, so the membrane can scan the ACTUAL retrieved
+ * content for injection before signing. Resilient: one scout failing (no LLM key, Tor down,
+ * an API 429) must NOT sink the mission — the others still contribute. */
 export async function runSwarm(
   mission: Mission,
   trace: Trace,
-  recall?: MemoryRecall,
 ): Promise<{ signal: Signal; snippets: Snippet[] }> {
   const order: ScoutKind[] = ["web", "tor", "breach"];
-  if (recall?.recalled && recall.route.length) {
-    const pref = scoutsForRoute(recall.route);
-    // Stable sort: recalled scouts first, the rest after — still run them all.
-    order.sort((a, b) => (pref.includes(b) ? 1 : 0) - (pref.includes(a) ? 1 : 0));
-    trace("memory", "IntelligenceNetwork", "action", recall.reason, {
-      route: recall.route, recalled_from: recall.recalled_from, warm_start: true,
-    });
-  } else {
-    trace("memory", "IntelligenceNetwork", "info",
-      recall?.reason ?? "Cold start — no procedural memory; exploring all sources.", { warm_start: false });
-  }
-
   trace("execution", "Planner", "action", `Decomposing mission → ${order.map((s) => SCOUT_LABEL[s]).join("/")} scouts`);
-  // Resilient fan-out: one scout failing (no LLM key, Tor down, an API 429) must NOT sink
-  // the mission — the others still contribute. allSettled keeps the swarm up.
   const settled = await Promise.allSettled(
     order.map((k) => (k === "web" ? webScout(mission, trace) : k === "tor" ? torScout(mission, trace) : breachScout(mission, trace))),
   );
