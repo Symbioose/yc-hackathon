@@ -32,7 +32,9 @@ const SYSTEM = `You are Meridian Copilot, the research assistant embedded in Mer
 
 You have no direct access to the internet, to live market data, or to any external source, and your built-in knowledge is stale. You must NOT answer questions about real companies, people, prices, current events, security incidents, breaches, or leaks from memory.
 
-You have exactly ONE capability: the tool altai_research. It dispatches a governed research mission to Altai's external fleet — it searches the open web, and for security / breach / dark-web questions it also goes onto the dark web over Tor and queries breach APIs — and returns a sanitized, source-cited brief that is cryptographically signed (Ed25519) over a tamper-evident audit ledger.
+You have two capabilities:
+1. altai_research — dispatch a governed research mission to Altai's external fleet. It searches the open web, and for security / breach / dark-web questions also goes onto the dark web over Tor and queries breach APIs, returning a sanitized, source-cited brief signed with Ed25519 over a tamper-evident audit ledger.
+2. altai_export — turn the most recent research brief into a downloadable, Ed25519-signed document: Excel (xlsx), CSV (csv), Markdown (md), JSON (json), or a STIX 2.1 bundle (stix).
 
 Rules:
 - You receive the FULL conversation history. Always use it to keep continuity and to resolve references ("it", "that one", "the France Travail one", "which one", "he"). Each prior assistant turn carries the research evidence it was based on (event type, confidence, sources) — treat that as established context.
@@ -42,6 +44,7 @@ Rules:
 - After research returns, write a concise answer (1-4 sentences) grounded ONLY in the returned brief, citing sources inline as [1], [2] in the brief's source order. Do not re-list the sources — the terminal renders them.
 - If the brief is "inconclusive" or has no sources, say plainly the sources did not confirm it. Do not fabricate. If a question is inherently speculative (e.g. exactly which stock will move), say what the evidence supports and flag the uncertainty rather than inventing specifics.
 - If the mission was "blocked", explain it was blocked by Altai's policy and give the reason. If it "timed out" or "errored", say the research could not complete.
+- DOCUMENTS: when the user asks for a document, file, spreadsheet, Excel, report, or export of a research result, call altai_export with the requested format(s) (default to ["xlsx"] if unspecified; map "Excel"→xlsx, "spreadsheet"→xlsx, "report"→md). NEVER say you cannot create documents — you can, via altai_export. If no research has been run yet in this conversation, ask the user to run a search first. After exporting, tell the user the document(s) are ready to download (a download button is shown); do not paste file contents.
 - Be precise and professional, in the tone of a buy-side research desk. No hype, no filler.`;
 
 /** Compact, model-facing view of a mission result (the rich brief goes to the UI separately). */
@@ -62,16 +65,22 @@ function modelView(r: ResearchResult | null) {
   };
 }
 
+const EXPORT_FORMATS = ["xlsx", "csv", "md", "json", "stix"] as const;
+
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const messages = Array.isArray(body?.messages) ? body.messages : [];
+  // The mission_id of the most recent completed research in this conversation (from the
+  // client) — altai_export turns that brief into downloadable documents.
+  const lastMissionId = typeof body?.lastMissionId === "string" ? body.lastMissionId : "";
 
-  // Captured from the tool's execute() closure (TS doesn't track closure assignments,
+  // Captured from the tools' execute() closures (TS doesn't track closure assignments,
   // so a holder object keeps the declared types when read after generateText).
   const captured: {
     research: ResearchResult | null;
     toolInput: { query: string; entity?: string; ticker?: string } | null;
-  } = { research: null, toolInput: null };
+    exports: { format: string; url: string }[];
+  } = { research: null, toolInput: null, exports: [] };
 
   try {
     const result = await generateText({
@@ -99,18 +108,41 @@ export async function POST(req: Request) {
             return modelView(captured.research);
           },
         }),
+        altai_export: tool({
+          description:
+            "Turn the most recent research brief into downloadable, Ed25519-signed documents (Excel/CSV/Markdown/JSON/STIX 2.1). " +
+            "Use when the user asks for a document, file, spreadsheet, report or export of a research result.",
+          inputSchema: z.object({
+            formats: z
+              .array(z.enum(EXPORT_FORMATS))
+              .min(1)
+              .describe("One or more document formats to generate (e.g. ['xlsx'] for Excel)."),
+          }),
+          execute: async ({ formats }) => {
+            if (!lastMissionId) {
+              return { ok: false, error: "No research brief to export yet — run a research mission first." };
+            }
+            const made = [...new Set(formats)].map((format) => {
+              const url = `/bank/api/export?mission_id=${encodeURIComponent(lastMissionId)}&format=${format}`;
+              captured.exports.push({ format, url });
+              return format;
+            });
+            return { ok: true, formats: made, note: "Documents generated; download buttons are shown to the user." };
+          },
+        }),
       },
     });
 
     const text =
       result.text?.trim() || captured.research?.brief?.signal?.summary || "I couldn't produce an answer.";
-    return Response.json({ text, toolInput: captured.toolInput, research: captured.research });
+    return Response.json({ text, toolInput: captured.toolInput, research: captured.research, exports: captured.exports });
   } catch (e) {
     return Response.json({
       text: `The copilot hit an error reaching the model: ${e instanceof Error ? e.message : String(e)}`,
       error: true,
       toolInput: captured.toolInput,
       research: captured.research,
+      exports: captured.exports,
     });
   }
 }

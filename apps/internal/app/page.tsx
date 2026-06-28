@@ -12,6 +12,7 @@ interface Research {
   audit?: { entries: AuditEntry[]; signature_valid: boolean; ledger_ok: boolean };
 }
 interface ToolInput { query?: string; entity?: string; ticker?: string }
+interface ExportItem { format: string; url: string }
 interface ChatMsg {
   id: string;
   role: "user" | "assistant";
@@ -21,7 +22,13 @@ interface ChatMsg {
   synthetic?: boolean;
   toolInput?: ToolInput | null;
   research?: Research | null;
+  exports?: ExportItem[] | null;
 }
+
+const FORMAT_LABELS: Record<string, string> = { xlsx: "Excel", csv: "CSV", md: "Markdown", json: "JSON", stix: "STIX 2.1" };
+const ALL_FORMATS = ["xlsx", "csv", "md", "json", "stix"];
+const exportUrl = (missionId: string, format: string) =>
+  `/bank/api/export?mission_id=${encodeURIComponent(missionId)}&format=${format}`;
 
 // ---- desk widgets (no live prices — coverage only) ------------------------
 const WATCHLIST = [
@@ -161,6 +168,22 @@ function AuditLog({ entries, missionId }: { entries: AuditEntry[]; missionId?: s
   );
 }
 
+function DownloadRow({ title, items }: { title: string; items: ExportItem[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="deliv">
+      <div className="deliv-h">{title}</div>
+      <div className="deliv-row">
+        {items.map((it) => (
+          <a key={it.format} className="deliv-btn" href={it.url} download>
+            ↓ {FORMAT_LABELS[it.format] ?? it.format.toUpperCase()}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function Evidence({ research }: { research: Research }) {
   if (research.status === "blocked") {
     return (
@@ -204,6 +227,12 @@ function Evidence({ research }: { research: Research }) {
       )}
       {audit && <SignedBadge audit={audit} brief={research.brief} />}
       {audit && audit.entries.length > 0 && <AuditLog entries={audit.entries} missionId={research.mission_id} />}
+      {research.mission_id && s.sources.length > 0 && (
+        <DownloadRow
+          title="DOCUMENTS — AGENT-GENERATED · Ed25519-SIGNED"
+          items={ALL_FORMATS.map((f) => ({ format: f, url: exportUrl(research.mission_id!, f) }))}
+        />
+      )}
     </div>
   );
 }
@@ -246,8 +275,18 @@ function Message({ m }: { m: ChatMsg }) {
         <div className="who">MERIDIAN COPILOT</div>
         <div className={`bubble asst${m.error ? " err" : ""}`}>
           {m.toolInput && <ToolChip toolInput={m.toolInput} research={m.research} />}
+          {m.exports && m.exports.length > 0 && (
+            <div className="toolchip">
+              <span>⚙ tool</span>
+              <b>altai_export</b>
+              <span className="ok">✓ {m.exports.length} document{m.exports.length > 1 ? "s" : ""} signed</span>
+            </div>
+          )}
           <div style={{ whiteSpace: "pre-wrap" }}><Citations text={m.text} /></div>
           {m.research && <Evidence research={m.research} />}
+          {m.exports && m.exports.length > 0 && (
+            <DownloadRow title="DOCUMENTS READY · Ed25519-SIGNED" items={m.exports} />
+          )}
         </div>
       </div>
     </div>
@@ -277,6 +316,10 @@ export default function MeridianTerminal() {
     const history = [...messages, userMsg]
       .filter((m) => !m.synthetic && !m.pending && m.text)
       .map((m) => ({ role: m.role, content: historyContent(m) }));
+    // most recent completed research mission — altai_export turns its brief into documents
+    const lastMissionId =
+      [...messages].reverse().find((m) => m.research?.status === "completed" && m.research?.mission_id)?.research
+        ?.mission_id ?? "";
 
     const pendingId = uid();
     setMessages((prev) => [...prev, userMsg, { id: pendingId, role: "assistant", text: "", pending: true }]);
@@ -285,7 +328,7 @@ export default function MeridianTerminal() {
       const r = await fetch("/bank/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, lastMissionId }),
       });
       const json = await r.json();
       setMessages((prev) =>
@@ -297,6 +340,7 @@ export default function MeridianTerminal() {
                 text: String(json.text ?? ""),
                 toolInput: json.toolInput ?? null,
                 research: json.research ?? null,
+                exports: Array.isArray(json.exports) ? json.exports : null,
                 error: !!json.error,
               }
             : m,

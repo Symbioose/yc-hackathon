@@ -162,6 +162,16 @@ details.audit > summary:hover { color: var(--ink); }
 .audit-line.dark .actor { color: var(--violet); }
 .audit-line.block { color: var(--red); }
 
+/* document deliverables */
+.deliv { margin-top: 12px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.deliv-h { font-family: var(--mono); font-size: 9px; letter-spacing: 1px; color: var(--faint); margin-bottom: 8px; }
+.deliv-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.deliv-btn {
+  font-family: var(--mono); font-size: 11px; padding: 7px 11px; text-decoration: none; cursor: pointer;
+  color: var(--amber); border: 1px solid rgba(255, 176, 0, 0.35); background: var(--amber-soft); border-radius: 6px;
+}
+.deliv-btn:hover { background: rgba(255, 176, 0, 0.2); }
+
 .callout { margin-top: 12px; border-radius: 8px; padding: 11px 13px; font-size: 12.5px; line-height: 1.5; }
 .callout.block { background: var(--red-soft); border: 1px solid rgba(248,113,113,0.4); color: #ffc4c4; }
 .callout.warn { background: var(--amber-soft); border: 1px solid rgba(255,176,0,0.3); color: #ffdd9e; }
