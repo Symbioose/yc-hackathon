@@ -324,12 +324,17 @@ export default function MeridianTerminal() {
     const pendingId = uid();
     setMessages((prev) => [...prev, userMsg, { id: pendingId, role: "assistant", text: "", pending: true }]);
 
+    // Dark-web research can run for a while — allow a generous window before giving up.
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 240000);
     try {
       const r = await fetch("/bank/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ messages: history, lastMissionId }),
+        signal: ctrl.signal,
       });
+      if (!r.ok) throw new Error(`gateway ${r.status}`);
       const json = await r.json();
       setMessages((prev) =>
         prev.map((m) =>
@@ -347,13 +352,15 @@ export default function MeridianTerminal() {
         ),
       );
       if (json.research) setMissions((c) => c + 1);
-    } catch {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === pendingId ? { ...m, pending: false, error: true, text: "Network error reaching the copilot." } : m,
-        ),
-      );
+    } catch (e) {
+      const aborted = e instanceof DOMException && e.name === "AbortError";
+      const msg = aborted
+        ? "The research ran past the time limit and was stopped. Your question is back in the box — try again or narrow it."
+        : "Couldn't reach the copilot just now (it may still be starting up, or a long dark-web search dropped). Your question is back in the box — press Send to retry.";
+      setMessages((prev) => prev.map((m) => (m.id === pendingId ? { ...m, pending: false, error: true, text: msg } : m)));
+      setInput(q); // restore the question so the turn isn't lost
     } finally {
+      clearTimeout(timeout);
       setBusy(false);
       inputRef.current?.focus();
     }
