@@ -53,7 +53,7 @@ Altai is **not a proxy or a VPN**. The value is the governance and verification 
 
 ### Example use case
 
-A desk wants to know whether a public company has been compromised. The internal (sealed) agent dispatches the question. Altai's fleet searches the open web, cross-checks breach APIs, and (over Tor) live-fetches dark-web sources, fuses the corroborating sources into a confidence score, and returns a signed brief. If nothing credible is found, it says so — `inconclusive` at confidence 0, never a fabricated answer. Every step is in the signed audit log.
+Ask the sealed agent **any** question — a general one (*"who is the CEO of OpenAI?"*) or a security one (*"Has Ticketmaster been breached and is the data on the dark web?"*). Altai searches the open web, reads the real pages, and — for security/breach questions — also goes **live onto the dark web over Tor**; an Analyst then synthesizes a **cited** answer and signs it. If the sources don't contain the answer it says so — `inconclusive` at confidence 0, never fabricated. Every step (including the Tor exit IP + live `.onion` fetch) is in the signed audit log.
 
 ---
 
@@ -126,10 +126,12 @@ Every mission crosses six layers; every action is recorded into the audit ledger
 1. **Dispatch** — the sealed agent's only egress. The mission is parsed and validated against the shared `Mission` contract.
 2. **Policy** — per-tenant governance: source allow/deny-list, scope (`osint_readonly`), data classes, spend caps. Out-of-policy missions are rejected before any execution.
 3. **Identity isolation** — the client's identity, IP, and raw query never leave the gateway. The fleet acts under Altai's own egress.
-4. **Execution** — a `Planner` decomposes the mission and runs specialized scouts in parallel:
-   - **Web Scout** — a real keyless web search (DuckDuckGo), then fetches the actual top results. A page counts as corroboration *only* if it references the target entity **and** describes a breach/leak.
-   - **Tor Scout** — Ahmia discovery + a live `.onion` fetch over SOCKS5, reporting the real Tor exit IP and country. The fetched content only counts if it actually references the target.
-   - **Breach Scout** — HIBP / IntelX breach corroboration (returns `[]` gracefully when no key is configured).
+4. **Execution** — the `Planner` refines the question into a focused search query, runs the scouts in parallel, and an **Analyst** LLM synthesizes a concise, **cited** answer grounded *only* in what was fetched:
+   - **Web Scout** *(always)* — a real keyless web search (DuckDuckGo), then fetches the actual top results (distinct domains). Answers any question, not just breaches.
+   - **Tor Scout** *(security/breach/dark-web questions only)* — reaches the Ahmia dark-web index live at its `.onion` over Tor, reporting the real exit IP + country, and best-effort fetches any indexed forum. The live `.onion` fetch is recorded in the signed ledger.
+   - **Breach Scout** *(security questions only)* — HIBP / IntelX corroboration (returns `[]` gracefully when no key is configured).
+
+   The Tor + breach scouts fire only when the question concerns breaches/leaks/the dark web (keyword-gated), so a general question stays a fast web lookup while a security question visibly goes onto the dark web.
 5. **Membrane** — an adversarial inbound panel. Nothing crosses back until it passes:
    - **Injection Hunter** — scans the **actual fetched** dark-web/web content for prompt-injection and identity-exfil attempts; quarantines on hit. (A clean run honestly reports no injection — nothing is planted.)
    - **Sanitizer** — scrubs every field of the brief (PII, secrets, control chars, HTML/script, prompt-injection, unsafe URL schemes) *before* it is signed, so everything downstream — including generated documents — is clean by construction.
@@ -149,8 +151,8 @@ sequenceDiagram
   participant M as Membrane + Audit
   S->>G: dispatch(mission)  ·  the only egress
   G->>G: policy check + identity isolation
-  G->>F: run scouts (web search · Tor · breach)
-  F-->>G: corroborating sources (or none)
+  G->>F: web search (+ Tor & breach for security questions)
+  F-->>G: fetched pages (+ live .onion for security) → cited answer
   G->>M: hunt injection · sanitize · judge
   M->>M: Merkle ledger + Ed25519 signature
   M-->>G: SignedBrief
@@ -162,12 +164,12 @@ sequenceDiagram
 
 ## Honest results, by construction
 
-Altai never fabricates a finding. The brief is built **only** from what the scouts actually corroborated:
+Altai never fabricates a finding. The answer is built **only** from what was actually fetched:
 
-- A web page or `.onion` counts as a source **only** if its fetched content references the target entity (and, for the web, describes a breach). Off-topic hits are fetched, logged, and discarded — not counted.
+- The **Analyst answers strictly from the fetched pages** and cites them inline (`[1][2]`). If they don't contain the answer it says so verbatim → the signal is `inconclusive` at confidence `0`. No templated event, no inflated score.
 - The Injection Hunter scans the **real bytes** the scouts retrieved. There is no planted payload that "always fires".
-- With zero corroboration the signal is `inconclusive` at confidence `0` with the summary *"No corroborating evidence found …"* — never a templated event or an inflated score.
-- There is **one** runtime path. There is no scripted/demo fleet and no hardcoded "hero" case; if the real swarm errors it seals an honest inconclusive brief rather than falling back to a canned answer.
+- The dark-web step reaches a **real** `.onion` service live over Tor — the exit IP and the `.onion` fetch are recorded in the signed audit ledger, not faked.
+- There is **one** runtime path. No scripted/demo fleet, no hardcoded "hero" case; if the swarm errors it seals an honest inconclusive brief rather than a canned answer.
 
 ```bash
 # A real company with public breach coverage → real corroboration:
@@ -293,10 +295,13 @@ pnpm install
 
 ## Configuration
 
-The system runs **with zero keys** — the Web Scout uses a keyless search, the Tor Scout degrades gracefully if no proxy is present, and the Breach Scout returns `[]` without a key. Configure only what you want to enable.
+The agent needs an **LLM key** to synthesize the written answer; everything else degrades gracefully (keyless web search, Tor optional, breach APIs optional).
 
 | Variable | Required | Description |
 |---|---|---|
+| `OPENAI_API_KEY` | for answers | Used by the **Analyst** to refine the search query and synthesize the cited answer. Without it, the scout returns the top source instead of a written answer. |
+| `OPENAI_MODEL_FAST` | for answers | Model id (default `gpt-4o-mini`). |
+| `OPENAI_BASE_URL` | optional | OpenAI-compatible endpoint override (e.g. an on-prem inference proxy). |
 | `HIBP_API_KEY` | optional | Live Have I Been Pwned breach lookups (otherwise the Breach Scout returns none). |
 | `INTELX_API_KEY` | optional | Live IntelX search. |
 | `TOR_SOCKS_HOST` / `TOR_SOCKS_PORT` | optional | Tor SOCKS5 proxy (defaults `tor` / `9050` under Docker, `127.0.0.1` / `9050` locally). |
@@ -347,13 +352,13 @@ pnpm typecheck    # typecheck the whole workspace
 
 ## Demo script
 
-The whole story, end to end, with zero keys required.
+The whole story, end to end (set `OPENAI_API_KEY` for the synthesized answer).
 
 1. **The cage is real.** `docker compose exec internal-app curl https://google.com` times out; the same container reaches `external-app:3000/api/health`. The sealed side holds no keys and has no wire.
-2. **A governed, real mission.** Open the sealed app at `/bank`, dispatch *"Has Live Nation suffered a data breach?"* The ops-center lights up: policy ✓ → identity stripped → scouts deploy → a **live Tor exit IP** is reported → the Web Scout finds real press corroboration → the **Judge signs** the brief → the **Merkle audit ledger** seals. Click **⚠ TAMPER** and watch the recomputed root turn red while the signature stays valid.
-3. **An honest negative.** Dispatch a nonsense target → the brief comes back **`inconclusive` at confidence 0** — Altai reports reality, it doesn't invent a finding.
+2. **A governed dark-web mission.** Open the sealed app at `/bank`, ask *"Has Ticketmaster been breached and is the data on the dark web?"*. The ops-center lights up: policy ✓ → identity stripped → query refined → Web Scout reads real press → **Tor Scout establishes a circuit, reports a live exit IP, and does a live `.onion` fetch of the dark-web index** → the Analyst writes a **cited** answer → **Judge signs** → **Merkle ledger** seals. Expand **Audit log** to see the `🧅 Tor exit … / Live .onion fetch OK (200)` lines **inside the signed ledger**. Click **⚠ TAMPER** → the recomputed root turns red while the signature stays valid.
+3. **It answers anything.** Ask *"who is the president of France?"* → a cited answer (elysee.fr, Wikipedia), web-only, no Tor. Ask a nonsense question → **`inconclusive` at confidence 0** — it reports reality, never invents.
 4. **Agent deliverables.** From the SIGNAL card, download the brief as **Excel**, **CSV**, **Markdown**, **JSON**, or a **STIX 2.1** bundle — each carrying the Ed25519 provenance.
-5. **Don't trust — verify.** Drop that `brief.json` onto the **VERIFY A BRIEF** zone → ✓ AUTHENTIC. Open it, change one number, drop it again → ✗ FORGED. The proof is in the file.
+5. **Don't trust — verify.** Drop that `brief.json` onto the **VERIFY A BRIEF** zone → ✓ AUTHENTIC. Open it, change one value, drop it again → ✗ FORGED. The proof is in the file.
 6. **Any agent can do this.** The sealed app drives the same pipeline through the [MCP adapter](#-mcp-layer--how-any-agent-dispatches-a-mission) — dispatch → status → fetch_signal — and gets back the identical signed brief.
 
 ---
@@ -435,7 +440,7 @@ pnpm test        # all packages
 pnpm typecheck   # all packages
 ```
 
-Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection, independent forged-brief rejection, key fingerprint), the tools (web/breach graceful degradation, Tor), the agents (planner synthesis incl. honest `inconclusive`, the scout relevance/breach gates, membrane injection detection, and full-field sanitization — HTML/control-char/injection/secret/unsafe-URL scrubbing with no false positives on clean briefs), the fixtures (noisy-OR confidence fusion), and the artifacts (CSV escaping, deterministic STIX 2.1 bundle, a real round-tripped `.xlsx`, and document-security: CSV/XLSX formula-injection + Markdown/STIX injection neutralization).
+Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root, tamper detection, independent forged-brief rejection, key fingerprint), the tools (web/breach graceful degradation, Tor), the agents (signal synthesis incl. honest `inconclusive`, the security-query gate, the web-research + live-Tor (.onion) scouts, answer synthesis, membrane injection detection, and full-field sanitization — HTML/control-char/injection/secret/unsafe-URL scrubbing with no false positives on clean briefs), the fixtures (noisy-OR confidence fusion), and the artifacts (CSV escaping, deterministic STIX 2.1 bundle, a real round-tripped `.xlsx`, and document-security: CSV/XLSX formula-injection + Markdown/STIX injection neutralization).
 
 ---
 
@@ -443,6 +448,7 @@ Coverage spans the contract schemas, the crypto (Ed25519 round-trip, Merkle root
 
 - **Language:** TypeScript across the whole monorepo.
 - **Apps:** Next.js 15 (App Router), React 19; PixiJS + GSAP for the ops-center visualization.
+- **Agents:** Vercel AI SDK (`ai` + `@ai-sdk/openai`) — the Analyst refines the search query + synthesizes the cited answer (provider-agnostic, one-import swap).
 - **Contracts:** Zod.
 - **Crypto:** Node `crypto` (Ed25519) + a hand-rolled Merkle ledger.
 - **Deliverables:** `exceljs` for real `.xlsx`; hand-rolled CSV / Markdown / JSON / **STIX 2.1** (OASIS CTI).

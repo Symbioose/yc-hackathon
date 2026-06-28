@@ -55,8 +55,10 @@ export async function runResearchMission(args: DispatchArgs): Promise<any> {
     if (dispatched.status !== "dispatched") return dispatched; // blocked / error
     const id = dispatched.mission_id as string;
 
-    for (let i = 0; i < 40; i++) {
-      await sleep(800);
+    // Poll up to ~120s: a dark-web run does query-refinement + answer synthesis (2 LLM
+    // calls) plus live Tor + page fetches, which can take well over 30s.
+    for (let i = 0; i < 120; i++) {
+      await sleep(1000);
       const st = parse(await client.callTool({ name: "get_mission_status", arguments: { mission_id: id } }));
       if (st.status === "completed") {
         return parse(await client.callTool({ name: "fetch_signal", arguments: { mission_id: id } }));
