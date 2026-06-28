@@ -68,6 +68,17 @@ const usedDarkWeb = (r?: Research | null) =>
   !!r?.audit?.entries.some(isDarkLine);
 const uid = () => Math.random().toString(36).slice(2);
 
+/** What an assistant turn contributes to the model's history: its answer PLUS a compact
+ * note of the research evidence it was based on, so later follow-ups can reference the
+ * earlier findings/sources (real ChatGPT-style continuity) without re-researching. */
+function historyContent(m: ChatMsg): string {
+  if (m.role !== "assistant" || !m.research) return m.text;
+  const s = m.research.brief?.signal;
+  if (!s || s.sources.length === 0) return m.text;
+  const srcs = s.sources.map((x, i) => `[${i + 1}] ${x.name}`).join(", ");
+  return `${m.text}\n[altai_research evidence · ${s.event_type} · ${Math.round(s.confidence * 100)}% · sources: ${srcs}]`;
+}
+
 // ---- small components -----------------------------------------------------
 function Clock() {
   const [t, setT] = useState("");
@@ -265,7 +276,7 @@ export default function MeridianTerminal() {
     const userMsg: ChatMsg = { id: uid(), role: "user", text: q };
     const history = [...messages, userMsg]
       .filter((m) => !m.synthetic && !m.pending && m.text)
-      .map((m) => ({ role: m.role, content: m.text }));
+      .map((m) => ({ role: m.role, content: historyContent(m) }));
 
     const pendingId = uid();
     setMessages((prev) => [...prev, userMsg, { id: pendingId, role: "assistant", text: "", pending: true }]);
