@@ -209,15 +209,15 @@
   .oneliner{margin-top:16px;font-size:16px;line-height:1.5;color:var(--ink);background:#f7ece4;border:1px solid rgba(194,106,69,.35);border-radius:12px;padding:14px 20px}
   .oneliner b{color:var(--terra-deep)}
   /* competition matrix */
-  .matrix{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:6px}
-  .matrix > div{padding:11px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;justify-content:center}
+  .matrix{display:grid;grid-template-columns:1.85fr 1fr 1fr 1fr 1fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:6px}
+  .matrix > div{padding:10px 9px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;justify-content:center}
   .matrix .mk{align-items:center;text-align:center;border-left:1px solid var(--line-soft)}
   .matrix .hc{background:var(--ink);color:var(--cream);border-bottom:none}
   .matrix .hc.us{background:var(--terra)}
-  .matrix .hc .hn{font-size:14px;font-weight:800;letter-spacing:.02em}
-  .matrix .hc .hs{font-size:10.5px;font-weight:600;color:#b6b0a4;margin-top:2px;letter-spacing:.02em}
+  .matrix .hc .hn{font-size:12.5px;font-weight:800;letter-spacing:.01em;line-height:1.1}
+  .matrix .hc .hs{font-size:9.5px;font-weight:600;color:#b6b0a4;margin-top:2px;letter-spacing:.01em;line-height:1.15}
   .matrix .hc.us .hs{color:#f3d9cc}
-  .matrix .rl{font-size:14px;font-weight:600;color:#3a362f}
+  .matrix .rl{font-size:13px;font-weight:600;color:#3a362f;line-height:1.25}
   .matrix .uscol{background:#f7ece4}
   .matrix .last > div,.matrix .lastcell{border-bottom:none}
   .yes{color:#2e9e63;font-weight:800;font-size:17px}
@@ -315,8 +315,8 @@
     <div class="prob-grid">
       <ul class="clean">
         <li>Every desk is standing up <strong>internal AI agents</strong> for research. The CISO seals them: <strong>no outbound internet</strong>. That is the correct security posture.</li>
-        <li>But the signal that <strong>moves a stock</strong> (breaches, leaks, dark-web chatter, filings before they're news) lives <strong>outside the wall</strong>, exactly where the agent can't go.</li>
-        <li>Today's workaround is a human analyst: <strong>slow, risky, and not first</strong>.</li>
+        <li>But the signal that <strong>moves a stock</strong> lives <strong>outside the wall</strong>: alternative data, filings, supply-chain and hiring shifts, sentiment, and breach exposure. Exactly where the agent can't go.</li>
+        <li>Today's workaround is a human analyst who spends <strong>42% of the time just gathering data</strong>, not analyzing (AFP/APQC), and is still never first.</li>
         <li class="terra"><strong>First mover takes the trade. Everyone else reads the press release.</strong></li>
       </ul>
       <div class="prob-grid-right">
@@ -326,10 +326,10 @@
           <div class="nobar">✕ no outbound internet</div>
           <div class="sub" style="margin-top:14px">the wall</div>
           <div class="outside" style="width:100%;margin-top:14px">
-            <div class="ttl">where the signal is</div>
-            <div class="chip"><span>▸</span>Open + firewall-blocked web</div>
-            <div class="chip"><span>▸</span>Breach &amp; leak data</div>
-            <div class="chip"><span>▸</span>Dark-web chatter · filings</div>
+            <div class="ttl">where the edge lives</div>
+            <div class="chip"><span>▸</span>Alt-data: demand · supply-chain · hiring</div>
+            <div class="chip"><span>▸</span>Filings · patents · litigation · sentiment</div>
+            <div class="chip"><span>▸</span>Breach &amp; dark-web exposure</div>
           </div>
         </div>
       </div>
@@ -369,7 +369,7 @@
   <section class="slide">
     <div class="head-block">
       <div class="kicker">How it works · the solution</div>
-      <h2>One audited door. A fleet does the dangerous part.<br>A signed brief comes back.</h2>
+      <h2>One audited door. A fleet does the research.<br>A signed answer comes back.</h2>
     </div>
     <div class="flow">
       <div class="node">
@@ -389,7 +389,7 @@
         <svg class="stl terra" viewBox="0 0 156 120"><use href="#stl"/></svg>
         <div class="nlab">Fleet · outside</div>
         <div class="ntitle">Planner + scouts</div>
-        <div class="nbody">Decomposes the mission, runs <strong>Web · Tor · Breach</strong> scouts in parallel, recovers from failures.</div>
+        <div class="nbody">Decomposes the question, runs <strong>research scouts (open web · Tor · breach)</strong> in parallel, recovers from failures.</div>
       </div>
       <div class="arrow">→</div>
       <div class="node">
@@ -399,7 +399,7 @@
       </div>
     </div>
     <div class="flow-foot">
-      Back comes a <strong>signed, sourced brief</strong>, verified <em>inside</em> the air-gap (Ed25519 + Merkle). Real multi-step autonomy, and an honest <span class="mono">inconclusive&nbsp;@&nbsp;0</span> when there's nothing, never fabricated.
+      Back comes a signed brief: a <strong>sourced conclusion with a confidence score, not a pile of links</strong>, verified <em>inside</em> the air-gap (Ed25519 + Merkle). Real multi-step autonomy; an honest <span class="mono">inconclusive&nbsp;@&nbsp;0</span> when there's nothing, never fabricated.
     </div>
     <div class="foot"><span class="brand"><svg class="stl ink stlfoot" viewBox="0 0 156 120"><use href="#stl"/></svg>ALTAI</span><span class="pageno">04 / 10</span></div>
   </section>
@@ -487,12 +487,12 @@
       <div class="bm-col">
         <div class="panel">
           <div class="ph">Who pays</div>
-          <p><strong>PM / Head of Research</strong> on an event-driven or multi-strategy desk. They already spend <strong>$100K–$500K/yr</strong> per alternative-data source.</p>
+          <p><strong>PM / Head of Research</strong> on an event-driven or multi-strat desk — already running <strong>~20 alt-data feeds at $1.6M/yr</strong> (large funds: $5M). <span style="color:var(--muted);font-size:14px">(Neudata, 2024)</span> Altai is the on-demand layer for the questions those fixed feeds can't answer.</p>
         </div>
         <div class="panel">
           <div class="ph">Pricing</div>
           <div class="price">€2,500<small> / yr per seat</small></div>
-          <p style="margin-top:10px">Then <strong>pay-per-investigation</strong> in <strong>Intelligence Units</strong>, metered like cloud compute, not a flat license. Enterprise &amp; on-prem tiers on top.</p>
+          <p style="margin-top:10px">Then <strong>pay-per-investigation</strong> in <strong>Intelligence Units</strong>, metered like cloud compute, not a flat license. <strong>Pilot credits</strong> for design partners; Enterprise &amp; on-prem tiers on top.</p>
           <div class="iu-row">
             <div class="iu">Quick check<b>≈ 55 IU</b></div>
             <div class="iu">Full diligence<b>≈ 2,000 IU</b></div>
@@ -527,24 +527,25 @@
       <div class="hc"><div class="hn">Runlayer</div><div class="hs">agent control plane</div></div>
       <div class="hc"><div class="hn">Recorded Future</div><div class="hs">dark-web intel</div></div>
       <div class="hc"><div class="hn">AlphaSense</div><div class="hs">AI finance research</div></div>
+      <div class="hc"><div class="hn">Web-search APIs</div><div class="hs">Linkup · Exa · Tavily</div></div>
 
       <div class="rl">Governed egress for air-gapped agents</div>
-      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="partial">~</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div>
+      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="partial">~</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div>
 
       <div class="rl">Reaches closed / dark-web sources</div>
-      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div>
+      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div>
 
       <div class="rl">Agent-native, on-demand (no human analyst)</div>
-      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="partial">~</span></div>
+      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="partial">~</span></div><div class="mk"><span class="yes">✓</span></div>
 
       <div class="rl">Cryptographic signed provenance</div>
-      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div>
+      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="no">–</span></div>
 
       <div class="rl">Finance-grade tradeable signal</div>
-      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="partial">~</span></div><div class="mk"><span class="yes">✓</span></div>
+      <div class="mk uscol"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div><div class="mk"><span class="partial">~</span></div><div class="mk"><span class="yes">✓</span></div><div class="mk"><span class="no">–</span></div>
 
       <div class="rl lastcell">Adversarial inbound membrane</div>
-      <div class="mk uscol lastcell"><span class="yes">✓</span></div><div class="mk lastcell"><span class="partial">~</span></div><div class="mk lastcell"><span class="no">–</span></div><div class="mk lastcell"><span class="no">–</span></div>
+      <div class="mk uscol lastcell"><span class="yes">✓</span></div><div class="mk lastcell"><span class="partial">~</span></div><div class="mk lastcell"><span class="no">–</span></div><div class="mk lastcell"><span class="no">–</span></div><div class="mk lastcell"><span class="no">–</span></div>
     </div>
     <div class="oneliner">
       Each is copyable on its own. <b>Nobody packages all six</b>. That's the moat: <b>Runlayer</b> governs what your agent can touch, <b>Recorded Future</b> feeds your analysts; <b>Altai</b> lets your sealed agent ask the outside world a question and get back a <b>signed, tradeable answer it can trust.</b>
