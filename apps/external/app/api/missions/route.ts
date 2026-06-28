@@ -19,6 +19,6 @@ export async function POST(req: Request) {
   }
 
   createMission(mission.id);
-  void runFleet(mission); // fire-and-forget; real swarm or fake fleet per USE_REAL_FLEET
+  void runFleet(mission); // fire-and-forget; always the real swarm (web + Tor + breach → membrane → audit)
   return Response.json({ id: mission.id });
 }

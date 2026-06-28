@@ -1,5 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { fetchUrl } from "./web";
+import { fetchUrl, htmlToText } from "./web";
+
+describe("htmlToText", () => {
+  it("strips scripts/styles/tags and decodes entities into readable text", () => {
+    const html =
+      `<html><head><title>T</title><style>.a{color:red}</style>` +
+      `<script>var x = 1 < 2;</script></head>` +
+      `<body><h1>Paris</h1><p>It&#39;s sunny &amp; warm today.</p></body></html>`;
+    const t = htmlToText(html);
+    expect(t).toContain("Paris");
+    expect(t).toContain("It's sunny & warm today.");
+    expect(t).not.toMatch(/<[^>]+>/); // no markup survives
+    expect(t).not.toContain("var x"); // script body removed
+    expect(t).not.toContain("color:red"); // style body removed
+  });
+});
 
 describe("fetchUrl", () => {
   it("returns status + truncated text for a reachable page", async () => {

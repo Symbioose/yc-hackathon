@@ -69,6 +69,9 @@ importers:
 
   apps/internal:
     dependencies:
+      '@ai-sdk/openai':
+        specifier: ^2.0.0
+        version: 2.0.109(zod@3.25.76)
       '@altai/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -78,6 +81,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.0
         version: 1.29.0(zod@3.25.76)
+      ai:
+        specifier: ^5.0.0
+        version: 5.0.206(zod@3.25.76)
       next:
         specifier: ^15.1.0
         version: 15.5.19(@opentelemetry/api@1.9.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -87,6 +93,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.7(react@19.2.7)
+      zod:
+        specifier: ^3.23.0
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.10.0

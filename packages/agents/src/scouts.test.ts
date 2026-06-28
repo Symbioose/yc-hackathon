@@ -9,6 +9,9 @@ vi.mock("@altai/tools", () => ({
   getExitIp: vi.fn(async () => ({ ip: "185.220.101.1", country: "DE" })),
   hibpLookup: vi.fn(async () => []),
   intelxSearch: vi.fn(async () => []),
+  htmlToText: (s: string) => String(s).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
+  looksBlocked: (s: string) => /cloudflare|captcha|attention required/i.test(String(s)),
+  fetchViaReader: vi.fn(async (url: string) => ({ url, ok: false, status: 0, text: "" })),
 }));
 vi.mock("ai", () => ({
   generateText: vi.fn(async () => ({ text: "Tokyo is the capital of Japan [1]." })),
@@ -36,7 +39,12 @@ describe("webScout — read the real top results (distinct hosts)", () => {
       { title: "dup", url: "https://en.wikipedia.org/y" }, // same host → deduped
       { title: "WA", url: "https://www.worldatlas.com/z" },
     ]);
-    mock(tools.fetchUrl).mockResolvedValue({ ok: true, status: 200, title: "t", text: "Tokyo is the capital." });
+    mock(tools.fetchUrl).mockResolvedValue({
+      ok: true,
+      status: 200,
+      title: "t",
+      text: "Tokyo is the capital of Japan. It is the largest metropolitan area in the world and the economic center of the country.",
+    });
     const r = await webScout({ query: "capital of japan" }, noTrace);
     expect(r.sources.map((s) => s.name)).toEqual(["en.wikipedia.org", "www.worldatlas.com"]);
     expect(r.contexts.length).toBe(2);

@@ -5,7 +5,10 @@ import { membraneAndSeal } from "./seal";
 
 export async function runRealFleet(mission: Mission): Promise<void> {
   const trace = tracer(mission.id, emitTrace);
-  trace("dispatch", "Gateway", "info", "Mission received via sealed egress");
+  trace("dispatch", "Gateway", "info", "Mission received via sealed egress", {
+    entity: mission.target_entity ?? mission.query,
+    query: mission.query,
+  });
   trace("policy", "PolicyAgent", "success", "Mission within tenant policy (osint_readonly)");
   trace("identity", "IdentityIsolation", "info", "Client identity stripped; acting under Altai egress");
   try {

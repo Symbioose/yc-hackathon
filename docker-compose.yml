@@ -28,6 +28,12 @@ services:
     environment:
       EXTERNAL_URL: "http://external-app:3000"
       RESEARCH_MCP_URL: "http://research-mcp:3200/mcp"
+      # Meridian Copilot LLM. The sealed container has no internet, so it reaches
+      # the model through the gateway's OpenAI-compatible proxy — the API key stays
+      # in external-app and never enters the sealed side.
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_MODEL_FAST: "${OPENAI_MODEL_FAST:-gpt-4o-mini}"
+      OPENAI_BASE_URL: "http://external-app:3000/api/llm/v1"
     depends_on: [external-app, research-mcp]
 
   # Research MCP layer — thin MCP-to-HTTP adapter over external-app's pipeline.

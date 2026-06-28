@@ -1,6 +1,6 @@
 import type { SourceContribution } from "@altai/contracts";
 import { generateText } from "ai";
-import { fetchUrl, webSearch, torFetch, getExitIp, hibpLookup, intelxSearch } from "@altai/tools";
+import { fetchUrl, webSearch, torFetch, getExitIp, hibpLookup, intelxSearch, htmlToText, fetchViaReader, looksBlocked } from "@altai/tools";
 import { fastModel } from "./provider";
 import type { Trace } from "./trace";
 
@@ -55,31 +55,63 @@ export async function refineQuery(question: string, trace: Trace): Promise<strin
   }
 }
 
+const alnum = (s: string) => s.replace(/[^a-z0-9]/gi, "").length;
+const sentences = (s: string) => (s.match(/[.!?]\s/g) || []).length;
+// "Weak" = too short, almost no sentences (nav/menu chrome), or a bot-wall page.
+const isWeak = (s: string) => alnum(s) < 300 || sentences(s) < 4 || looksBlocked(s);
+
+/** Read one search result into clean, citable text. Tries a direct fetch first; if the page
+ * is blocked (401/403/Cloudflare) or thin/JS-rendered (static HTML is just nav), falls back
+ * to the keyless reader proxy, which renders it and returns the real content. Returns null
+ * if nothing readable could be obtained, so block-page boilerplate never reaches the Analyst. */
+async function readResult(
+  r: { title: string; url: string },
+  trace: Trace,
+): Promise<{ host: string; url: string; title: string; body: string } | null> {
+  const host = hostOf(r.url);
+  const direct = await fetchUrl(r.url);
+  let body = direct.ok ? htmlToText(direct.text) : "";
+
+  if (!direct.ok || isWeak(body)) {
+    const via = await fetchViaReader(r.url);
+    if (via.ok) {
+      const vb = htmlToText(via.text);
+      if (!looksBlocked(vb) && alnum(vb) > alnum(body)) {
+        body = vb;
+        trace("execution", "WebScout", "info", `${host} → read via render proxy (direct ${direct.ok ? "thin" : direct.status || "failed"})`);
+      }
+    }
+  }
+
+  body = body.replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim();
+  if (!body || looksBlocked(body) || alnum(body) < 80) {
+    trace("execution", "WebScout", "info", `GET ${host} → ${direct.ok ? "no readable content" : direct.status || direct.error}`);
+    return null;
+  }
+  return { host, url: r.url, title: r.title || host, body: body.slice(0, 4200) };
+}
+
 // --- Web Scout: real keyless search → read the real top results ------------
 export async function webScout(mission: { query: string; target_entity?: string }, trace: Trace, searchQuery?: string): Promise<ScoutOut> {
   const q = (searchQuery || mission.query?.trim() || mission.target_entity || "").trim();
   trace("execution", "WebScout", "action", `Searching the open web for: ${q}`);
-  const results = await webSearch(q, 6);
+  const results = await webSearch(q, 8);
   if (!results.length) {
     trace("execution", "WebScout", "info", "No web results found");
     return EMPTY;
   }
   const seen = new Set<string>();
-  const top = results.filter((r) => { const h = hostOf(r.url); if (seen.has(h)) return false; seen.add(h); return true; }).slice(0, 4);
+  // Read a few distinct hosts in parallel; some sites bot-block (401/403/Cloudflare) or are
+  // JS-rendered (static HTML is just nav chrome), so over-fetch to survive failures.
+  const top = results.filter((r) => { const h = hostOf(r.url); if (seen.has(h)) return false; seen.add(h); return true; }).slice(0, 5);
   trace("execution", "WebScout", "action", `Reading the top ${top.length} of ${results.length} results`);
-  const pages = await Promise.all(top.map((r) => fetchUrl(r.url)));
+  const reads = await Promise.all(top.map((r) => readResult(r, trace)));
   const out: ScoutOut = { sources: [], snippets: [], contexts: [] };
-  pages.forEach((p, i) => {
-    const r = top[i];
-    const host = hostOf(r.url);
-    if (!p.ok) {
-      trace("execution", "WebScout", "info", `GET ${host} → ${p.status || p.error}`);
-      return;
-    }
-    const text = `${p.title ?? ""} ${p.text}`.replace(/\s+/g, " ").trim().slice(0, 1400);
-    out.contexts.push(`${r.title} — ${host}\n${text}`);
-    out.snippets.push({ source: host, content: p.text.slice(0, 2000) });
-    out.sources.push({ name: host, type: "press", reliability: 0.5, observed_at: today(), url: r.url });
+  reads.forEach((res) => {
+    if (!res) return;
+    out.contexts.push(`${res.title} — ${res.host}\n${res.body}`);
+    out.snippets.push({ source: res.host, content: res.body.slice(0, 2000) });
+    out.sources.push({ name: res.host, type: "press", reliability: 0.5, observed_at: today(), url: res.url });
   });
   trace("execution", "WebScout", out.sources.length ? "success" : "info", `${out.sources.length} web source(s) read`);
   return out;
@@ -139,7 +171,7 @@ export async function torScout(mission: { query: string; target_entity?: string 
   const r = await torFetch(hits[0].onion, 20000);
   if (r.ok) {
     trace("execution", "TorScout", "success", `Live .onion fetch OK (${r.status}) — ${hits[0].host}`, { onion_url: hits[0].onion, exit_ip: exit.ip, country: exit.country });
-    const text = r.text.replace(/\s+/g, " ").trim().slice(0, 1400);
+    const text = htmlToText(r.text).replace(/\s+/g, " ").trim().slice(0, 1800);
     out.contexts.push(`Dark-web forum ${hits[0].host} (.onion, via Tor)\n${text}`);
     out.snippets.push({ source: hits[0].onion, content: r.text.slice(0, 2000) });
     out.sources.push({ name: hits[0].host, type: "tor_forum", reliability: 0.55, observed_at: today(), url: hits[0].onion });
@@ -171,10 +203,12 @@ export async function synthesizeAnswer(question: string, contexts: string[], tra
     const res = await generateText({
       model: fastModel(),
       prompt:
-        `You are a research analyst. Answer the user's question using ONLY the numbered sources below ` +
-        `(some are open-web pages, some are dark-web/.onion or breach-API records). Be accurate and concise ` +
-        `(1–4 sentences) and cite the sources you use inline like [1], [2]. If the sources do not contain the ` +
-        `answer, reply exactly: "The sources don't contain a clear answer."\n\nQuestion: ${question}\n\nSources:\n${numbered}`,
+        `You are a research analyst. Using ONLY the numbered sources below (open-web pages, and sometimes ` +
+        `dark-web/.onion or breach-API records), write a clear, helpful answer to the user's question. ` +
+        `Synthesize what the sources DO say that is relevant — be specific (names, dates, figures) and concise ` +
+        `(1–5 sentences) — and cite the sources you use inline like [1], [2]. Do not use any outside knowledge ` +
+        `and do not invent facts. Only if NONE of the sources are relevant to the question, reply exactly: ` +
+        `"The sources don't contain a clear answer."\n\nQuestion: ${question}\n\nSources:\n${numbered}`,
     });
     return res.text.trim();
   } catch (e) {
