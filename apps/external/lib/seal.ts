@@ -1,7 +1,6 @@
 import type { Mission, MissionMetrics, Signal, TraceEvent } from "@altai/contracts";
 import { huntInjection, sanitize } from "@altai/agents";
 import { buildLedger, merkleRoot, signBrief } from "@altai/crypto";
-import { plantedInjection } from "@altai/fixtures";
 import { emitMemory, emitTrace, getEvents, sealMission } from "./missionStore";
 import { memory } from "./memory";
 
@@ -25,8 +24,10 @@ export function membraneAndSeal(
     meta?: Record<string, unknown>,
   ) => emitTrace({ mission_id: mission.id, ts: new Date().toISOString(), layer, agent, level, msg, meta });
 
-  // 1. Injection Hunter — always scan the planted dark-web snippet plus any real ones.
-  const hunt = huntInjection([plantedInjection, ...snippets]);
+  // 1. Injection Hunter — scan the ACTUAL content the scouts fetched (real bytes from
+  // the live web / .onion pages). No planted fixture: if a finding fires here, a real
+  // page tried to hijack the agent; a clean run honestly reports no injection.
+  const hunt = huntInjection(snippets);
   if (!hunt.clean) {
     for (const f of hunt.findings) {
       trace("membrane", "InjectionHunter", "block", `Prompt-injection caught & quarantined from ${f.source}`, {

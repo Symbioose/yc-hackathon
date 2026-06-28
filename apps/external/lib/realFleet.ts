@@ -1,5 +1,5 @@
 import type { Mission } from "@altai/contracts";
-import { runSwarm, tracer } from "@altai/agents";
+import { runSwarm, synthesizeSignal, tracer } from "@altai/agents";
 import { emitTrace } from "./missionStore";
 import { membraneAndSeal } from "./seal";
 import { memory } from "./memory";
@@ -13,11 +13,14 @@ export async function runRealFleet(mission: Mission): Promise<void> {
     // Intelligence Network warm-start: recall the route similar past missions used,
     // so the Planner can select/order the scouts instead of exploring blind.
     const recall = memory.recall(mission);
-    const signal = await runSwarm(mission, trace, recall);
+    const { signal, snippets } = await runSwarm(mission, trace, recall);
     // Membrane (Injection Hunter + Sanitizer) + crypto attestation, then seal + learn.
-    membraneAndSeal(mission, signal, []);
+    // Pass the real fetched snippets so the Injection Hunter scans actual retrieved content.
+    membraneAndSeal(mission, signal, snippets);
   } catch (e) {
+    // Honest failure: NEVER fabricate a result. Report the error and seal an
+    // inconclusive, zero-confidence brief so the mission completes truthfully.
     trace("execution", "Planner", "warn", `Swarm error: ${e instanceof Error ? e.message : String(e)}`);
-    throw e;
+    membraneAndSeal(mission, synthesizeSignal(mission, []), []);
   }
 }

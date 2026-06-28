@@ -1,5 +1,5 @@
 import type { Mission, TraceEvent } from "@altai/contracts";
-import { heroSignal } from "@altai/fixtures";
+import { heroSignal, plantedInjection } from "@altai/fixtures";
 import { COLD_ROUTE } from "@altai/memory";
 import { emitMemory, emitTrace } from "./missionStore";
 import { membraneAndSeal } from "./seal";
@@ -75,5 +75,7 @@ export async function runDemoFleet(mission: Mission): Promise<void> {
 
   // Seal + reinforce. Passing the exact warmed metrics pins the headline #14 numbers;
   // membraneAndSeal emits the warmed snapshot, so the panel animates cold → warmed.
-  membraneAndSeal(mission, heroSignal(), [], cmp.warmed);
+  // The deterministic demo explicitly feeds the planted dark-web post so the membrane
+  // visibly quarantines a prompt-injection attempt (this is demo data, not the real path).
+  membraneAndSeal(mission, heroSignal(), [plantedInjection], cmp.warmed);
 }

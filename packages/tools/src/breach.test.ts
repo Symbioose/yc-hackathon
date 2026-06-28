@@ -1,16 +1,18 @@
-import { describe, it, expect } from "vitest";
-import { heroSourcesFor } from "./breach";
+import { describe, it, expect, vi } from "vitest";
+import { hibpLookup, intelxSearch } from "./breach";
 
-describe("heroSourcesFor", () => {
-  it("returns the verified fixture sources for the hero ticker (deterministic)", () => {
-    const s = heroSourcesFor("LYV");
-    expect(s).not.toBeNull();
-    expect(s!.length).toBeGreaterThanOrEqual(2);
-    expect(s!.map((x) => x.name)).toContain("BreachForums");
-    expect(s!.every((x) => x.reliability > 0 && x.reliability <= 1)).toBe(true);
+// Real breach APIs degrade gracefully: with no API key configured they return [] (never
+// throw, never fabricate). This is the behaviour the swarm relies on when keys are absent.
+describe("breach APIs (graceful, no fabrication)", () => {
+  it("hibpLookup returns [] when HIBP_API_KEY is absent", async () => {
+    vi.stubEnv("HIBP_API_KEY", "");
+    expect(await hibpLookup("example.com")).toEqual([]);
+    vi.unstubAllEnvs();
   });
 
-  it("returns null for a non-hero ticker", () => {
-    expect(heroSourcesFor("AAPL")).toBeNull();
+  it("intelxSearch returns [] when INTELX_API_KEY is absent", async () => {
+    vi.stubEnv("INTELX_API_KEY", "");
+    expect(await intelxSearch("Acme Corp")).toEqual([]);
+    vi.unstubAllEnvs();
   });
 });

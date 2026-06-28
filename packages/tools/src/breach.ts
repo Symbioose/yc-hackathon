@@ -1,14 +1,4 @@
 import type { SourceContribution } from "@altai/contracts";
-import { heroCase } from "@altai/fixtures";
-
-/** Hero pinning: for the demo ticker, return the verified fixture sources so the
- * final Signal is reproducible regardless of live API availability (spec §10). */
-export function heroSourcesFor(ticker: string): SourceContribution[] | null {
-  if (ticker?.toUpperCase() === heroCase.primary.ticker.toUpperCase()) {
-    return heroCase.primary.sources;
-  }
-  return null;
-}
 
 /** Live HIBP breaches for a domain. Returns [] if no key or on failure (graceful). */
 export async function hibpLookup(domain: string): Promise<SourceContribution[]> {

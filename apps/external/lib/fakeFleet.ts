@@ -1,5 +1,5 @@
 import type { Mission, TraceEvent } from "@altai/contracts";
-import { heroSignal } from "@altai/fixtures";
+import { heroSignal, plantedInjection } from "@altai/fixtures";
 import { emitTrace } from "./missionStore";
 import { membraneAndSeal } from "./seal";
 import { memory } from "./memory";
@@ -32,6 +32,7 @@ export async function runFakeFleet(mission: Mission): Promise<void> {
     await sleep(600);
   }
   // Membrane + crypto attestation seal the mission, then teach the network (same path
-  // as the real fleet).
-  membraneAndSeal(mission, heroSignal(), []);
+  // as the real fleet). This scripted fallback explicitly feeds the planted dark-web post
+  // so the membrane's injection-quarantine beat is still visible offline (demo data).
+  membraneAndSeal(mission, heroSignal(), [plantedInjection]);
 }
