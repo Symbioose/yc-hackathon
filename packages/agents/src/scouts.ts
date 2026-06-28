@@ -1,8 +1,5 @@
-import { generateText, tool, stepCountIs } from "ai";
-import { z } from "zod";
 import type { SourceContribution } from "@altai/contracts";
-import { fetchUrl, ahmiaSearch, torFetch, getExitIp, hibpLookup, intelxSearch } from "@altai/tools";
-import { fastModel } from "./provider";
+import { fetchUrl, webSearch, ahmiaSearch, torFetch, getExitIp, hibpLookup, intelxSearch } from "@altai/tools";
 import type { Trace } from "./trace";
 
 /** A piece of fetched content, kept so the membrane can scan the ACTUAL bytes we
@@ -37,43 +34,58 @@ export function mentionsEntity(text: string, entity?: string): boolean {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-// --- Web Scout: open + blocked web -----------------------------------------
+// A page only corroborates a *breach* if it talks about one (not just mentions the entity).
+const BREACH_RE = /breach|leak|hack|exposed|exposure|compromis|stolen|ransom|dump|credential|data\s*theft/i;
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+// --- Web Scout: REAL search → fetch real results → relevance/breach gate ----
+// No LLM-guessed URLs (those hallucinate and 404). We run an actual web search, fetch the
+// real top results, and only count a source if the fetched page both references the target
+// AND describes a breach/leak. Honest by construction.
 export async function webScout(
   mission: { query: string; target_entity?: string },
   trace: Trace,
 ): Promise<ScoutResult> {
-  trace("execution", "WebScout", "action", "Searching open + blocked web sources");
   const entity = mission.target_entity ?? mission.query;
+  trace("execution", "WebScout", "action", `Searching the open web for "${entity} data breach"`);
   const found: SourceContribution[] = [];
   const snippets: Snippet[] = [];
-  const res = await generateText({
-    model: fastModel(),
-    stopWhen: stepCountIs(4),
-    tools: {
-      fetch_url: tool({
-        description: "Fetch a web page (open or firewall-blocked). Returns status + text.",
-        inputSchema: z.object({ url: z.string().url() }),
-        execute: async ({ url }) => {
-          trace("execution", "WebScout", "action", `GET ${url}`);
-          const r = await fetchUrl(url);
-          if (r.ok) {
-            const host = new URL(url).hostname;
-            snippets.push({ source: host, content: r.text.slice(0, 2000) });
-            // Only corroborating if the page actually mentions the target.
-            if (mentionsEntity(`${r.title} ${r.text}`, entity)) {
-              found.push({ name: host, type: "press", reliability: 0.4, observed_at: today(), url });
-            } else {
-              trace("execution", "WebScout", "info", `${host} fetched but off-topic for ${entity} — not counted`);
-            }
-          }
-          return { ok: r.ok, status: r.status, title: r.title, text: r.text.slice(0, 1500) };
-        },
-      }),
-    },
-    prompt: `You are a web-research scout. Find press or forum corroboration that "${entity}" suffered a data breach or exposure. Fetch 1-3 relevant URLs, then stop and summarize in one sentence. If you find nothing credible, say so plainly.`,
+
+  const results = await webSearch(`${entity} data breach`, 6);
+  if (!results.length) {
+    trace("execution", "WebScout", "info", `No web search results for ${entity}`);
+    return { sources: found, snippets, notes: "no search results" };
+  }
+  trace("execution", "WebScout", "action", `Search returned ${results.length} result(s); fetching the top matches`);
+
+  const top = results.slice(0, 4);
+  const pages = await Promise.all(top.map((r) => fetchUrl(r.url)));
+  pages.forEach((page, i) => {
+    const r = top[i];
+    const host = hostOf(r.url);
+    if (!page.ok) {
+      trace("execution", "WebScout", "info", `GET ${host} → ${page.status || page.error}`);
+      return;
+    }
+    snippets.push({ source: host, content: page.text.slice(0, 2000) });
+    const blob = `${r.title} ${page.title ?? ""} ${page.text}`;
+    if (mentionsEntity(blob, entity) && BREACH_RE.test(blob)) {
+      found.push({ name: host, type: "press", reliability: 0.45, observed_at: today(), url: r.url });
+      trace("execution", "WebScout", "action", `Corroboration found at ${host}`);
+    } else {
+      trace("execution", "WebScout", "info", `${host} fetched — not breach-relevant for ${entity}`);
+    }
   });
+
   trace("execution", "WebScout", found.length ? "success" : "info", `${found.length} corroborating web source(s) for ${entity}`);
-  return { sources: found, snippets, notes: res.text };
+  return { sources: found, snippets, notes: `${results.length} results, ${found.length} corroborating` };
 }
 
 // --- Tor Scout: live .onion fetch over a real circuit ----------------------
